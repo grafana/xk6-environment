@@ -47,7 +47,7 @@ export function teardown() {
 }
 ```
 
-## Changes
+## Changes from k6-environment
 
 This repo is a copy-paste of k6-environment, with the following changes:
 - `register.go` instead of `main.go`
