@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- charts/grafana/templates/clusterrole.yaml
+- charts/grafana/templates/clusterrolebinding.yaml
+- charts/grafana/templates/configmap.yaml
+- charts/grafana/templates/deployment.yaml
+- charts/grafana/templates/role.yaml
+- charts/grafana/templates/rolebinding.yaml
+- charts/grafana/templates/secret.yaml
+- charts/grafana/templates/service.yaml
+- charts/grafana/templates/serviceaccount.yaml
+- charts/loki/templates/role.yaml
+- charts/loki/templates/rolebinding.yaml
+- charts/loki/templates/secret.yaml
+- charts/loki/templates/service-headless.yaml
+- charts/loki/templates/service-memberlist.yaml
+- charts/loki/templates/service.yaml
+- charts/loki/templates/serviceaccount.yaml
+- charts/loki/templates/statefulset.yaml
+- charts/promtail/templates/clusterrole.yaml
+- charts/promtail/templates/clusterrolebinding.yaml
+- charts/promtail/templates/daemonset.yaml
+- charts/promtail/templates/secret.yaml
+- charts/promtail/templates/serviceaccount.yaml
+- namespace.yaml
+- templates/datasources.yaml
