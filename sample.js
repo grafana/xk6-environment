@@ -2,7 +2,7 @@ import environment from 'k6/x/environment';
 
 const TestWithEnvironment = new environment.New({
     // Location of the test with environment
-    source: "examples/testapi-k6",
+    source: "examples/testapi-k6/",
 
     includeGrafana: true, // is ignored for now
 

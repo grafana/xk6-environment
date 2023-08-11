@@ -8,7 +8,7 @@ This is an adaptation of CLI tool [k6-environment](https://github.com/grafana/k6
 
 To build:
 ```
-xk6 build --with xk6-extension=.
+xk6 build --with xk6-environment=.
 ```
 
 To run:
@@ -22,7 +22,7 @@ import environment from 'k6/x/environment';
 
 const TestWithEnvironment = new environment.New({
     // Location of the test with environment
-    source: "examples/testapi-k6",
+    source: "examples/testapi-k6/",
     includeGrafana: true, // is ignored for now
 
     criteria: {
