@@ -77,9 +77,9 @@ func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 			if len(crdSpec.Namespace) == 0 {
 				crdSpec.Namespace = "default"
 			}
-
-			wc.kind = "K6"
+			wc.kind = crdSpec.Kind
 			wc.namespace = crdSpec.Namespace
+			fmt.Println(wc.kind)
 
 			wc.condF = func(ctx context.Context) (done bool, err error) {
 				// Why not subscribe to events here: K6 CRD for instance does not even have
@@ -90,8 +90,13 @@ func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 				// /apis/k6.io/v1alpha1/k6s - to get K6List
 				// /apis/k6.io/v1alpha1/namespaces/default/k6s/k6-sample - to get K6
 				// Ref: https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
+				crdList := "testruns"
+				if wc.kind == "K6" {
+					crdList = "k6s"
+				}
+				fmt.Println(fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/%s/%s", wc.namespace, crdList, crdSpec.Name))
 				d, err := c.clientset.RESTClient().Get().AbsPath(
-					fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/k6s/%s", wc.namespace, crdSpec.Name),
+					fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/%s/%s", wc.namespace, crdList, crdSpec.Name),
 				).DoRaw(ctx)
 				if err != nil {
 					return false, err
