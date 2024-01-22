@@ -15,8 +15,8 @@ import (
 	k8Yaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
-// waitCondition is meant to help decide what is the end of the test.
-type waitCondition struct {
+// WaitCondition is meant to help decide what is the end of the test.
+type WaitCondition struct {
 	// what was configured
 	// is condition on the test execution as a whole?
 	// e.g. in the future it could be IsThreshold
@@ -27,12 +27,16 @@ type waitCondition struct {
 	duration  time.Duration
 
 	// k8s resource
-	kind, name, namespace string
-	condF                 func(context.Context) (done bool, err error)
+	Kind, Name, Namespace string
+	Reason                string // for events
+	Condition, Status     string // for conditions
+	Log                   string // for logs
+
+	condF func(context.Context) (done bool, err error)
 }
 
-func NewWaitCondition(s string) (*waitCondition, error) {
-	var wc waitCondition
+func NewWaitCondition(s string) (*WaitCondition, error) {
+	var wc WaitCondition
 
 	// TODO: add validation
 	ss := strings.Split(s, "=")
@@ -54,10 +58,14 @@ func NewWaitCondition(s string) (*waitCondition, error) {
 }
 
 // wait conditon must be applied to specific test to be usable
-func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error {
-	wc.name = testName
+func (wc *WaitCondition) Apply(c *Client, testName string, td fs.TestDef) error {
+	wc.Name = testName
 
 	// TODO: refactor this many-IFs monster!
+
+	if len(wc.Reason) > 0 {
+		return wc.eventWaiter(c)
+	}
 
 	if wc.isTestExecution {
 		if td.IsYaml() {
@@ -77,9 +85,8 @@ func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 			if len(crdSpec.Namespace) == 0 {
 				crdSpec.Namespace = "default"
 			}
-			wc.kind = crdSpec.Kind
-			wc.namespace = crdSpec.Namespace
-			fmt.Println(wc.kind)
+			wc.Kind = crdSpec.Kind
+			wc.Namespace = crdSpec.Namespace
 
 			wc.condF = func(ctx context.Context) (done bool, err error) {
 				// Why not subscribe to events here: K6 CRD for instance does not even have
@@ -91,12 +98,12 @@ func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 				// /apis/k6.io/v1alpha1/namespaces/default/k6s/k6-sample - to get K6
 				// Ref: https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
 				crdList := "testruns"
-				if wc.kind == "K6" {
+				if wc.Kind == "K6" {
 					crdList = "k6s"
 				}
-				fmt.Println(fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/%s/%s", wc.namespace, crdList, crdSpec.Name))
+
 				d, err := c.clientset.RESTClient().Get().AbsPath(
-					fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/%s/%s", wc.namespace, crdList, crdSpec.Name),
+					fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/%s/%s", wc.Namespace, crdList, crdSpec.Name),
 				).DoRaw(ctx)
 				if err != nil {
 					return false, err
@@ -121,11 +128,11 @@ func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 		} else {
 			// k6-standalone mode
 
-			wc.kind = "Job"
-			wc.namespace = "default"
+			wc.Kind = "Job"
+			wc.Namespace = "default"
 
 			wc.condF = func(ctx context.Context) (done bool, err error) {
-				job, err := c.clientset.BatchV1().Jobs(wc.namespace).Get(ctx, wc.name, metav1.GetOptions{})
+				job, err := c.clientset.BatchV1().Jobs(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -147,6 +154,31 @@ func (wc *waitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 				return false, nil
 			}
 		}
+	}
+
+	return nil
+}
+
+func (wc *WaitCondition) eventWaiter(c *Client) error {
+	wc.condF = func(ctx context.Context) (done bool, err error) {
+		events, err := c.clientset.CoreV1().Events(wc.Namespace).List(ctx, metav1.ListOptions{
+			TypeMeta: metav1.TypeMeta{
+				Kind: wc.Kind,
+			},
+			FieldSelector: "involvedObject.name=" + wc.Name,
+		})
+		if err != nil {
+			return
+		}
+
+		for _, event := range events.Items {
+			if event.Reason == wc.Reason {
+				done = true
+				return
+			}
+		}
+
+		return
 	}
 
 	return nil

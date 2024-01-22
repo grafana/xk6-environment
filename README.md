@@ -1,56 +1,112 @@
-# xk6-environment
+<!--
 
-This work is done as quick PoC for Hackathon project, Aug 2023 ([`#hackathon-2023-08-k6-ephemeral`](https://raintank-corp.slack.com/archives/C05K5HF0YCF)).
+  You can edit the file as you like before or after the HTML comment,
+  but do not edit the API documentation between the following HTML comments,
+  it was automatically generated from the index.d.ts file.
 
-This is an adaptation of CLI tool [k6-environment](https://github.com/grafana/k6-environment) for xk6 extension, following [this proposal](https://github.com/grafana/k6-environment/blob/main/extension-proposal.js). For main info see README of k6-environment.
+  You can regenerate the API documentation and bindings code at any time
+  by "go generate ." command. The "//go:generate ..." comments required for this
+  can be found in the environment.go file.
 
-## How to
+-->
+<!-- begin:api -->
+xk6-environment
+===============
 
-To build:
-```
-xk6 build --with xk6-environment=.
-```
+ˮsummaryˮ
 
-To run:
-```
-./k6 run sample.js
-```
+<details><summary><em>Example</em></summary>
 
-where sample.js contains the following:
-```js
-import environment from 'k6/x/environment';
-
-const TestWithEnvironment = new environment.New({
-    // Location of the test with environment
-    source: "examples/testapi-k6/",
-    includeGrafana: true, // is ignored for now
-
-    criteria: {
-        // run until the test is finished successfully
-        test: "finished",
-    },
-
-    timeout: "24h", // is ignored for now
-})
-
-export function setup() {
-    // to ensure execution happens only once, we run creation of environment in setup
-    TestWithEnvironment.create();
-}
+```ts
+import globalEnvironment, { Environment } from "k6/x/environment"
 
 export default function () {
-    TestWithEnvironment.runTest();
-}
+  console.log(globalEnvironment.greeting)
 
-export function teardown() {
-    TestWithEnvironment.delete();
+  let instance = new Environment("Wonderful World")
+  console.log(instance.greeting)
 }
 ```
 
-## Changes from k6-environment
+</details>
 
-This repo is a copy-paste of k6-environment, with the following changes:
-- `register.go` instead of `main.go`
-- changes to `pkg/environment`: see comments there
+The [examples](https://github.com/grafana/xk6-environment/blob/master/examples) directory contains examples of how to use the xk6-environment extension. A k6 binary containing the xk6-environment extension is required to run the examples. *If the search path also contains the k6 command, don't forget to specify which k6 you want to run (for example `./k6`\)*.
 
-Otherwise, xk6-environment and k6-environment are identical. Which means we can have both CLI and xk6 extension with the same approach :tada:
+<details>
+<summary><strong>Build</strong></summary>
+
+The [xk6](https://github.com/grafana/xk6) build tool can be used to build a k6 that will include xk6-environment extension:
+
+```bash
+$ xk6 build --with github.com/grafana/xk6-environment@latest
+```
+
+For more build options and how to use xk6, check out the [xk6 documentation]([xk6](https://github.com/grafana/xk6)).
+
+</details>
+
+API
+===
+
+Environment
+-----------
+
+This is the primary class of the environment extension.
+
+<details><summary><em>Example</em></summary>
+
+```ts
+import { Environment } from "k6/x/environment"
+
+export default function () {
+  let instance = new Environment("Wonderful World")
+  console.log(instance.greeting)
+}
+```
+
+</details>
+
+### Environment()
+
+```ts
+constructor(name: string, type: string, initFolder: string);
+```
+
+-	`name` name of the environment
+
+-	`type` implementation for the environment (only "vcluster" for now)
+
+-	`initFolder` folder containing base manifests to apply on initialization of environment
+
+Create a new Environment instance.
+
+### Environment.init()
+
+```ts
+init(): void;
+```
+
+### Environment.delete()
+
+```ts
+delete(): void;
+```
+
+### Environment.apply()
+
+```ts
+apply(file: string): void;
+```
+
+### Environment.applySpec()
+
+```ts
+applySpec(spec: any): void;
+```
+
+### Environment.wait()
+
+```ts
+wait(obj: any): void;
+```
+<!-- end:api -->

@@ -3,13 +3,13 @@ package environment
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"xk6-environment/pkg/fs"
 	"xk6-environment/pkg/kubernetes"
 	"xk6-environment/pkg/vcluster"
 
-	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.uber.org/zap"
 )
@@ -129,67 +129,64 @@ func (e *Environment) Describe() string {
 }
 
 // adapted from k6-environment
-func (e *Environment) Create(ctx context.Context) {
-	rt := e.VU.Runtime()
-	ctx = e.VU.Context()
-
+func (e *Environment) Create(ctx context.Context) error {
 	if err := vcluster.Create(e.testName); err != nil {
-		common.Throw(rt, err)
+		return err
 	}
 
 	if err := e.initKubernetesClient(ctx, e.testName); err != nil {
-		common.Throw(rt, fmt.Errorf("unable to initialize Kubernetes client: %w", err))
+		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
 	if err := e.kubernetesClient.Deploy(e.Test.Kubernetes); err != nil {
-		common.Throw(rt, err)
+		return err
 	}
+
+	return nil
 }
 
 // adapted from k6-environment
-func (e *Environment) Delete(ctx context.Context) {
+func (e *Environment) Delete(ctx context.Context) error {
 	e.getEnvDataFromInit()
 
-	rt := e.VU.Runtime()
-	ctx = e.VU.Context()
-
 	if err := e.initKubernetesClient(ctx, e.ParentContext); err != nil {
-		common.Throw(rt, fmt.Errorf("unable to initialize Kubernetes client: %w", err))
+		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
 	if err := vcluster.Delete(e.testName); err != nil {
-		common.Throw(rt, err)
+		return err
 	}
+
+	return nil
 }
 
-func (e *Environment) RunTest(ctx context.Context) {
+func (e *Environment) RunTest(ctx context.Context) error {
 	e.getEnvDataFromInit()
-
-	rt := e.VU.Runtime()
-	ctx = e.VU.Context()
 
 	// context was set during creation of environment
 	// so its fine to pass empty string here
 	if err := e.initKubernetesClient(ctx, ""); err != nil {
-		common.Throw(rt, fmt.Errorf("unable to initialize Kubernetes client: %w", err))
+		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
 	if err := e.kubernetesClient.CreateTest(ctx, e.testName, e.Test.Def); err != nil {
-		common.Throw(rt, err)
+		return err
 	}
 
-	if err := e.wait(ctx, e.JSOptions.getCondition()); err != nil {
-		common.Throw(rt, err)
-	}
-}
-
-// non-public in xk6-environment
-func (e *Environment) wait(ctx context.Context, s string) error {
-	wc, err := kubernetes.NewWaitCondition(s)
+	wc, err := kubernetes.NewWaitCondition(e.JSOptions.getCondition())
 	if err != nil {
 		return err
 	}
 
+	if err := e.Wait(ctx, wc); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// non-public in xk6-environment
+func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) error {
 	if err := wc.Apply(e.kubernetesClient, e.testName, e.Test.Def); err != nil {
 		return err
 	}
@@ -199,4 +196,35 @@ func (e *Environment) wait(ctx context.Context, s string) error {
 func TestName(prefix string) string {
 	t := time.Now()
 	return prefix + t.Format("-060102-150405")
+}
+
+func (e *Environment) Apply(ctx context.Context, file string) error {
+	e.getEnvDataFromInit()
+
+	// context was set during creation of environment
+	// so its fine to pass empty string here
+	if err := e.initKubernetesClient(ctx, ""); err != nil {
+		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
+	}
+
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	return e.kubernetesClient.Apply(string(data))
+}
+
+func (e *Environment) ApplySpec(ctx context.Context, spec interface{}) error {
+	e.getEnvDataFromInit()
+
+	// context was set during creation of environment
+	// so its fine to pass empty string here
+	if err := e.initKubernetesClient(ctx, ""); err != nil {
+		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
+	}
+
+	// TODO
+	// o, err := e.kubernetesClient.Create(spec)
+	return nil //err
 }
