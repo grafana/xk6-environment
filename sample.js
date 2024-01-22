@@ -1,28 +1,26 @@
-import environment from 'k6/x/environment';
+import { Environment } from 'k6/x/environment';
 
-const TestWithEnvironment = new environment.New({
-    // Location of the test with environment
-    source: "examples/testapi-k6/",
-
-    includeGrafana: true, // is ignored for now
-
-    criteria: {
-        // run until the test is finished successfully
-        test: "finished",
-    },
-
-    timeout: "24h", // is ignored for now
-})
+const env = new Environment(
+    "some-name",
+    "vcluster",
+    "examples/internal-svc/",
+)
 
 export function setup() {
     // to ensure execution happens only once, we run creation of environment in setup
-    TestWithEnvironment.create();
+    env.init();
 }
 
 export default function () {
-    TestWithEnvironment.runTest();
+    env.apply("pod.yaml");
+    env.wait({
+        type: "Pod",
+        name: "nginx",
+        namespace: "default",
+        reason: "Started",
+    });
 }
 
 export function teardown() {
-    TestWithEnvironment.delete();
+    env.delete();
 }
