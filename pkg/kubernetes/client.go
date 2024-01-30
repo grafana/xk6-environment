@@ -3,7 +3,6 @@ package kubernetes
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 
 	"xk6-environment/pkg/fs"
@@ -40,39 +39,6 @@ func loadConfig(configPath string) (clientcmd.ClientConfig, error) {
 		}), nil
 }
 
-func CurrentContext(configPath string) (string, error) {
-	// is there a better way to get current context?
-	cfg, err := loadConfig(configPath)
-	if err != nil {
-		return "", err
-	}
-
-	rawConfig, err := cfg.RawConfig()
-	if err != nil {
-		return "", err
-	}
-
-	return rawConfig.CurrentContext, nil
-}
-
-// updates Kubeconfig
-func SetContext(configPath, ctxName string) error {
-	cfg, err := loadConfig(configPath)
-	if err != nil {
-		return err
-	}
-	rawCfg, err := cfg.RawConfig()
-	if err != nil {
-		return err
-	}
-
-	if rawCfg.Contexts[ctxName] == nil {
-		return fmt.Errorf("context %s doesn't exist", ctxName)
-	}
-	rawCfg.CurrentContext = ctxName
-	return clientcmd.ModifyConfig(clientcmd.NewDefaultPathOptions(), rawCfg, true)
-}
-
 func getClientConfig(configPath string) (*rest.Config, error) {
 	cfg, err := loadConfig(configPath)
 	if err != nil {
@@ -88,13 +54,7 @@ type Client struct {
 	clientset  *k8s.Clientset
 }
 
-func NewClient(ctx context.Context, configPath, ctxName string) (*Client, error) {
-	if ctxName != "" {
-		if err := SetContext(configPath, ctxName); err != nil {
-			return nil, err
-		}
-	}
-
+func NewClient(ctx context.Context, configPath string) (*Client, error) {
 	restConfig, err := getClientConfig(configPath)
 	if err != nil {
 		return nil, err

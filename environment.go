@@ -31,9 +31,6 @@ type goModuleImpl struct {
 var _ goModule = (*goModuleImpl)(nil)
 
 func (mod *goModuleImpl) newEnvironment(name, iType, initFolder string) (goEnvironment, error) {
-	// msg := fmt.Sprintf("Hello, %s!", nameArg)
-	// rt := mod.vu.Runtime()
-
 	opts := environment.JSOptions{
 		Source: initFolder,
 	}
@@ -48,18 +45,9 @@ func (mod *goModuleImpl) newEnvironment(name, iType, initFolder string) (goEnvir
 
 	env := environment.NewEnvironment(test, nil)
 
-	// env.VU = mi.vu
 	env.JSOptions = opts
 
-	// FIXME this should be config path being passed in...
-	env.ParentContext, err = kubernetes.CurrentContext("")
-	if err != nil {
-		return nil, err
-	}
-
-	env.TestName(environment.TestName(env.Test.FolderName()))
-
-	environment.InjectInitEnv(env)
+	env.SetTestName(env.Test.FolderName())
 
 	return goEnvironmentImpl{
 		Environment: env,

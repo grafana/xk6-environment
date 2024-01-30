@@ -14,39 +14,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	// we need to store Environment initialized in init context
-	// and setup() so that we can restore it during main VU execution
-	// TODO: this could use some cleaning up...
-	initEnvironment *Environment
-	// this is a bit hacky but it appears that init context is
-	// re-instantiating object more than once
-	injectCalled bool
-	// This mess can be avoided with some proper refactoring done:
-	// inject data in some object not connected to Environment
-	// and read that whenever needed.
-	// Perhaps, there should be:
-	// - Environment as JS interface
-	// - Environment as internal implementation which can be shared with CLI tool.
-)
-
-func InjectInitEnv(env *Environment) {
-	// allow injection only the first time
-	if injectCalled == false {
-		initEnvironment = env
-		injectCalled = true
-	}
-}
-
-// get configs from init env
-func (e *Environment) getEnvDataFromInit() {
-	e.opts = initEnvironment.opts
-	e.ParentContext = initEnvironment.ParentContext
-	e.testName = initEnvironment.testName
-	e.Test = initEnvironment.Test
-	e.JSOptions = initEnvironment.JSOptions
-}
-
 // Options for environment
 type options struct {
 	// k8s
@@ -90,7 +57,7 @@ type Environment struct {
 	kubernetesClient *kubernetes.Client
 	// This is now set from init context, see newEnvironment call
 	ParentContext string
-	testName      string
+	TestName      string
 	Test          *fs.Test
 
 	// set from JS
@@ -108,33 +75,57 @@ func NewEnvironment(test *fs.Test, logger *zap.Logger) *Environment {
 		},
 		kubernetesClient: nil,
 		ParentContext:    "",
-		testName:         "",
+		TestName:         "",
 		Test:             test,
 
 		logger: logger,
 	}
 }
 
-func (e *Environment) TestName(n string) {
-	e.testName = n
+func (e *Environment) SetTestName(n string) {
+	e.TestName = n
 }
 
-func (e *Environment) initKubernetesClient(ctx context.Context, ctxName string) (err error) {
-	e.kubernetesClient, err = kubernetes.NewClient(ctx, e.opts.ConfigPath, ctxName)
+func (e *Environment) InitKubernetes(ctx context.Context, ctxName string) (err error) {
+	if ctxName != "" {
+		if err := kubernetes.SetContext(e.opts.ConfigPath, ctxName); err != nil {
+			return err
+		}
+	}
+
+	e.kubernetesClient, err = kubernetes.NewClient(ctx, e.opts.ConfigPath)
 	return
 }
 
-func (e *Environment) Describe() string {
-	return fmt.Sprintf("Test name: `%s`, with files: %+v. K8s parent context is `%s`\n", e.testName, e.Test, e.ParentContext)
+func (e *Environment) getParent(ctx context.Context) (err error) {
+	e.ParentContext, err = kubernetes.CurrentContext("")
+	return
 }
 
-// adapted from k6-environment
+// In the end of each k6 lifecycle step, we should go back to parent
+// Kubernetes context, in order to have a clean state to start with
+func (e *Environment) parent(ctx context.Context) error {
+	return kubernetes.SetContext(e.opts.ConfigPath, e.ParentContext)
+}
+
+func (e *Environment) Describe() string {
+	return fmt.Sprintf(`Test name: %s, with files: %+v. 
+						jsopts: %v,
+						K8s parent context: %s\n`,
+		e.TestName, e.Test, e.JSOptions, e.ParentContext)
+}
+
+// to be called in setup()
 func (e *Environment) Create(ctx context.Context) error {
-	if err := vcluster.Create(e.testName); err != nil {
+	if err := e.getParent(ctx); err != nil {
 		return err
 	}
 
-	if err := e.initKubernetesClient(ctx, e.testName); err != nil {
+	if err := vcluster.Create(e.TestName); err != nil {
+		return err
+	}
+
+	if err := e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
@@ -142,34 +133,25 @@ func (e *Environment) Create(ctx context.Context) error {
 		return err
 	}
 
-	return nil
+	return e.parent(ctx)
 }
 
-// adapted from k6-environment
+// to be called in teardown()
 func (e *Environment) Delete(ctx context.Context) error {
-	e.getEnvDataFromInit()
+	// This will be needed if / when vcluster is done via Helm
+	// if err := e.InitKubernetes(ctx, ""); err != nil {
+	// 	return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
+	// }
 
-	if err := e.initKubernetesClient(ctx, e.ParentContext); err != nil {
-		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
-	}
-
-	if err := vcluster.Delete(e.testName); err != nil {
+	if err := vcluster.Delete(e.TestName); err != nil {
 		return err
 	}
 
-	return nil
+	return kubernetes.DeleteContext(e.opts.ConfigPath, e.TestName)
 }
 
 func (e *Environment) RunTest(ctx context.Context) error {
-	e.getEnvDataFromInit()
-
-	// context was set during creation of environment
-	// so its fine to pass empty string here
-	if err := e.initKubernetesClient(ctx, ""); err != nil {
-		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
-	}
-
-	if err := e.kubernetesClient.CreateTest(ctx, e.testName, e.Test.Def); err != nil {
+	if err := e.kubernetesClient.CreateTest(ctx, e.TestName, e.Test.Def); err != nil {
 		return err
 	}
 
@@ -187,23 +169,36 @@ func (e *Environment) RunTest(ctx context.Context) error {
 
 // non-public in xk6-environment
 func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) error {
-	if err := wc.Apply(e.kubernetesClient, e.testName, e.Test.Def); err != nil {
+	if err := e.getParent(ctx); err != nil {
 		return err
 	}
-	return e.kubernetesClient.Wait(ctx, wc)
+
+	if err := e.InitKubernetes(ctx, e.TestName); err != nil {
+		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
+	}
+
+	if err := wc.Apply(e.kubernetesClient, e.TestName, e.Test.Def); err != nil {
+		return err
+	}
+	if err := e.kubernetesClient.Wait(ctx, wc); err != nil {
+		return err
+	}
+
+	return e.parent(ctx)
 }
 
-func TestName(prefix string) string {
+// currently unused
+func newTestName(prefix string) string {
 	t := time.Now()
 	return prefix + t.Format("-060102-150405")
 }
 
 func (e *Environment) Apply(ctx context.Context, file string) error {
-	e.getEnvDataFromInit()
+	if err := e.getParent(ctx); err != nil {
+		return err
+	}
 
-	// context was set during creation of environment
-	// so its fine to pass empty string here
-	if err := e.initKubernetesClient(ctx, ""); err != nil {
+	if err := e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
@@ -212,18 +207,14 @@ func (e *Environment) Apply(ctx context.Context, file string) error {
 		return err
 	}
 
-	return e.kubernetesClient.Apply(string(data))
+	if err = e.kubernetesClient.Apply(string(data)); err != nil {
+		return err
+	}
+
+	return e.parent(ctx)
 }
 
 func (e *Environment) ApplySpec(ctx context.Context, spec interface{}) error {
-	e.getEnvDataFromInit()
-
-	// context was set during creation of environment
-	// so its fine to pass empty string here
-	if err := e.initKubernetesClient(ctx, ""); err != nil {
-		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
-	}
-
 	// TODO
 	// o, err := e.kubernetesClient.Create(spec)
 	return nil //err
