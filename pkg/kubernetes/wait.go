@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) Wait(ctx context.Context, wc *WaitCondition) error {
-	if wc.isTestExecution {
+	if wc.isTestExecution || len(wc.Reason) > 0 {
 		// TODO: hard cap of 1h for any test here
 		if err := wait.PollUntilContextTimeout(ctx, 2*time.Second, 1*time.Hour, true, wc.condF); err != nil {
 			return err

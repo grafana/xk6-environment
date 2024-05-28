@@ -59,13 +59,13 @@ func NewWaitCondition(s string) (*WaitCondition, error) {
 
 // wait conditon must be applied to specific test to be usable
 func (wc *WaitCondition) Apply(c *Client, testName string, td fs.TestDef) error {
-	wc.Name = testName
-
 	// TODO: refactor this many-IFs monster!
 
 	if len(wc.Reason) > 0 {
 		return wc.eventWaiter(c)
 	}
+
+	wc.Name = testName
 
 	if wc.isTestExecution {
 		if td.IsYaml() {
