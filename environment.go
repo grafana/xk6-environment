@@ -87,7 +87,7 @@ func (impl goEnvironmentImpl) applyMethod(fileArg string) error {
 }
 
 // applySpecMethod is the go representation of the applySpec method.
-func (impl goEnvironmentImpl) applySpecMethod(specArg interface{}) error {
+func (impl goEnvironmentImpl) applySpecMethod(specArg string) error {
 	return impl.ApplySpec(impl.vu.Context(), specArg)
 }
 

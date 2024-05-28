@@ -101,7 +101,7 @@ apply(file: string): void;
 ### Environment.applySpec()
 
 ```ts
-applySpec(spec: any): void;
+applySpec(spec: string): void;
 ```
 
 ### Environment.wait()

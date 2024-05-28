@@ -142,7 +142,7 @@ type goEnvironment interface {
 	applyMethod(fileArg string) error
 
 	// applySpecMethod is the go representation of the applySpec method.
-	applySpecMethod(specArg interface{}) error
+	applySpecMethod(specArg string) error
 
 	// waitMethod is the go representation of the wait method.
 	waitMethod(objArg interface{}) error
@@ -187,7 +187,7 @@ func (self *jsEnvironmentAdapter) applyMethod(call goja.FunctionCall, vm *goja.R
 
 // applySpecMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) applySpecMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
-	err := self.adaptee.applySpecMethod(call.Argument(0).Export())
+	err := self.adaptee.applySpecMethod(call.Argument(0).String())
 	if err != nil {
 		panic(err)
 	}
@@ -250,7 +250,7 @@ func (self *goEnvironmentAdapter) applyMethod(fileArg string) error {
 }
 
 // applySpecMethod is a applySpec adapter method.
-func (self *goEnvironmentAdapter) applySpecMethod(specArg interface{}) error {
+func (self *goEnvironmentAdapter) applySpecMethod(specArg string) error {
 	fun, ok := goja.AssertFunction(self.adaptee.Get("applySpec"))
 	if !ok {
 		return fmt.Errorf("%w: applySpec", errors.ErrUnsupported)

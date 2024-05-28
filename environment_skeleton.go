@@ -54,7 +54,7 @@ func (self *goEnvironmentImpl) applyMethod(fileArg string) error {
 }
 
 // applySpecMethod is a goEnvironment method implementation.
-func (self *goEnvironmentImpl) applySpecMethod(specArg interface{}) error {
+func (self *goEnvironmentImpl) applySpecMethod(specArg string) error {
 	return errors.ErrUnsupported
 }
 

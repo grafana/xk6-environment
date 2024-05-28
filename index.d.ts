@@ -41,9 +41,9 @@ export declare class Environment {
   init(): void;
   delete(): void;
 
-  // apply(files: string[]); is not supported by Tygor :sweat_smile:
+  // apply(files: string[]); arrays are not supported by Tygor :sweat_smile:
   apply(file: string): void;
-  applySpec(spec: any): void; // method overload is not supported
+  applySpec(spec: string): void; // we have to use a diff namehere: method overload is not supported
 
   wait(obj: any): void;
 

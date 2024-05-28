@@ -194,6 +194,14 @@ func newTestName(prefix string) string {
 }
 
 func (e *Environment) Apply(ctx context.Context, file string) error {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	return e.ApplySpec(ctx, string(data))
+}
+
+func (e *Environment) ApplySpec(ctx context.Context, spec string) error {
 	if err := e.getParent(ctx); err != nil {
 		return err
 	}
@@ -202,20 +210,9 @@ func (e *Environment) Apply(ctx context.Context, file string) error {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return err
-	}
-
-	if err = e.kubernetesClient.Apply(string(data)); err != nil {
+	if err := e.kubernetesClient.Apply(spec); err != nil {
 		return err
 	}
 
 	return e.parent(ctx)
-}
-
-func (e *Environment) ApplySpec(ctx context.Context, spec interface{}) error {
-	// TODO
-	// o, err := e.kubernetesClient.Create(spec)
-	return nil //err
 }
