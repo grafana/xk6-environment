@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+	"time"
 	"xk6-environment/pkg/environment"
 	"xk6-environment/pkg/fs"
 	"xk6-environment/pkg/kubernetes"
@@ -67,8 +68,8 @@ type goEnvironmentImpl struct {
 var _ goEnvironment = (*goEnvironmentImpl)(nil)
 
 // initMethod is the go representation of the create method.
-func (impl goEnvironmentImpl) initMethod() error {
-	return impl.Create(impl.vu.Context())
+func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
+	return impl.Create(impl.vu.Context()), nil
 }
 
 // runTestMethod is the go representation of the runTest method.
@@ -77,8 +78,8 @@ func (impl goEnvironmentImpl) runTestMethod() error {
 }
 
 // deleteMethod is the go representation of the delete method.
-func (impl goEnvironmentImpl) deleteMethod() error {
-	return impl.Delete(impl.vu.Context())
+func (impl goEnvironmentImpl) deleteMethod() (interface{}, error) {
+	return impl.Delete(impl.vu.Context()), nil
 }
 
 // applyMethod is the go representation of the apply method.
@@ -91,33 +92,47 @@ func (impl goEnvironmentImpl) applySpecMethod(specArg string) error {
 	return impl.ApplySpec(impl.vu.Context(), specArg)
 }
 
-func (impl goEnvironmentImpl) waitMethod(objArg interface{}) error {
-	waitOptions, ok := objArg.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("wait() requires an object that can be converted to map[string]interface{}, got: %+v", objArg)
+func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
+	wc, err := kubernetes.NewWaitCondition(conditionArg)
+	if err != nil {
+		// this is a syntax error in definition of condition itself
+		return err.Error(), nil
 	}
-	// only events here now
-	if wc, ok := isEvent(waitOptions); ok {
-		return impl.Wait(impl.vu.Context(), &wc)
+
+	if optsArg != nil {
+		interval, timeout, err := waitOptions(optsArg)
+		if err != nil {
+			// this is a syntax error in options
+			return err.Error(), nil
+		}
+		wc.TimeParams(interval, timeout)
 	}
-	return fmt.Errorf("wait() requires an object that can be converted to a supported wait condition, got: %+v", waitOptions)
+
+	wc.Build()
+
+	return impl.Wait(impl.vu.Context(), wc), nil
 }
 
-func isEvent(waitOptions map[string]interface{}) (wc kubernetes.WaitCondition, ok bool) {
-	if wc.Kind, ok = waitOptions["type"].(string); !ok {
+func waitOptions(optsArg interface{}) (interval, timeout time.Duration, err error) {
+	e := fmt.Errorf(`2nd argument in wait() must be an object of the form {interval:"1h",timeout:"5m"}; got: %+v`, optsArg)
+	opts, ok := optsArg.(map[string]interface{})
+	if !ok {
+		err = e
 		return
 	}
 
-	if wc.Name, ok = waitOptions["name"].(string); !ok {
-		return
+	intervalS, _ := opts["interval"].(string)
+	timeoutS, _ := opts["timeout"].(string)
+
+	if len(intervalS) > 0 {
+		interval, err = time.ParseDuration(intervalS)
+		if err != nil {
+			return
+		}
 	}
 
-	if wc.Namespace, ok = waitOptions["namespace"].(string); !ok {
-		return
-	}
-
-	if wc.Reason, ok = waitOptions["reason"].(string); !ok {
-		return
+	if len(timeoutS) > 0 {
+		timeout, err = time.ParseDuration(timeoutS)
 	}
 
 	return

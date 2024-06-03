@@ -39,13 +39,13 @@ type goEnvironmentImpl struct{}
 var _ goEnvironment = (*goEnvironmentImpl)(nil)
 
 // initMethod is a goEnvironment method implementation.
-func (self *goEnvironmentImpl) initMethod() error {
-	return errors.ErrUnsupported
+func (self *goEnvironmentImpl) initMethod() (interface{}, error) {
+	return nil, errors.ErrUnsupported
 }
 
 // deleteMethod is a goEnvironment method implementation.
-func (self *goEnvironmentImpl) deleteMethod() error {
-	return errors.ErrUnsupported
+func (self *goEnvironmentImpl) deleteMethod() (interface{}, error) {
+	return nil, errors.ErrUnsupported
 }
 
 // applyMethod is a goEnvironment method implementation.
@@ -59,6 +59,6 @@ func (self *goEnvironmentImpl) applySpecMethod(specArg string) error {
 }
 
 // waitMethod is a goEnvironment method implementation.
-func (self *goEnvironmentImpl) waitMethod(objArg interface{}) error {
-	return errors.ErrUnsupported
+func (self *goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
+	return nil, errors.ErrUnsupported
 }

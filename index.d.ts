@@ -38,14 +38,15 @@ export declare class Environment {
    */
   constructor(name: string, type: string, initFolder: string);
 
-  init(): void;
-  delete(): void;
+  init();
+  delete();
 
   // apply(files: string[]); arrays are not supported by Tygor :sweat_smile:
   apply(file: string): void;
-  applySpec(spec: string): void; // we have to use a diff namehere: method overload is not supported
+  applySpec(spec: string): void; // we have to use a diff name here: method overload is not supported
 
-  wait(obj: any): void;
+  // wait(condition: any);
+  wait(condition: object, opts?: object);
 
   // TODO:
   // list(resource: string, namespace: string);

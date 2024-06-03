@@ -83,13 +83,13 @@ Create a new Environment instance.
 ### Environment.init()
 
 ```ts
-init(): void;
+init();
 ```
 
 ### Environment.delete()
 
 ```ts
-delete(): void;
+delete();
 ```
 
 ### Environment.apply()
@@ -107,6 +107,6 @@ applySpec(spec: string): void;
 ### Environment.wait()
 
 ```ts
-wait(obj: any): void;
+wait(condition: object, opts?: object);
 ```
 <!-- end:api -->

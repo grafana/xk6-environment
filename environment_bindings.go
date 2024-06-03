@@ -133,10 +133,10 @@ type jsEnvironment interface {
 // This is the primary class of the environment extension.
 type goEnvironment interface {
 	// initMethod is the go representation of the init method.
-	initMethod() error
+	initMethod() (interface{}, error)
 
 	// deleteMethod is the go representation of the delete method.
-	deleteMethod() error
+	deleteMethod() (interface{}, error)
 
 	// applyMethod is the go representation of the apply method.
 	applyMethod(fileArg string) error
@@ -145,7 +145,7 @@ type goEnvironment interface {
 	applySpecMethod(specArg string) error
 
 	// waitMethod is the go representation of the wait method.
-	waitMethod(objArg interface{}) error
+	waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error)
 }
 
 // jsEnvironmentAdapter converts goEnvironment to jsEnvironment.
@@ -157,22 +157,22 @@ var _ jsEnvironment = (*jsEnvironmentAdapter)(nil)
 
 // initMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) initMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
-	err := self.adaptee.initMethod()
+	v, err := self.adaptee.initMethod()
 	if err != nil {
 		panic(err)
 	}
 
-	return goja.Undefined()
+	return vm.ToValue(v)
 }
 
 // deleteMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) deleteMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
-	err := self.adaptee.deleteMethod()
+	v, err := self.adaptee.deleteMethod()
 	if err != nil {
 		panic(err)
 	}
 
-	return goja.Undefined()
+	return vm.ToValue(v)
 }
 
 // applyMethod is a jsEnvironment adapter method.
@@ -197,12 +197,12 @@ func (self *jsEnvironmentAdapter) applySpecMethod(call goja.FunctionCall, vm *go
 
 // waitMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) waitMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
-	err := self.adaptee.waitMethod(call.Argument(0).Export())
+	v, err := self.adaptee.waitMethod(call.Argument(0).Export(), call.Argument(1).Export())
 	if err != nil {
 		panic(err)
 	}
 
-	return goja.Undefined()
+	return vm.ToValue(v)
 }
 
 // goEnvironmentAdapter converts goja Object to goEnvironment.
@@ -214,27 +214,33 @@ type goEnvironmentAdapter struct {
 var _ goEnvironment = (*goEnvironmentAdapter)(nil)
 
 // initMethod is a init adapter method.
-func (self *goEnvironmentAdapter) initMethod() error {
+func (self *goEnvironmentAdapter) initMethod() (interface{}, error) {
 	fun, ok := goja.AssertFunction(self.adaptee.Get("init"))
 	if !ok {
-		return fmt.Errorf("%w: init", errors.ErrUnsupported)
+		return nil, fmt.Errorf("%w: init", errors.ErrUnsupported)
 	}
 
-	_, err := fun(self.adaptee)
+	res, err := fun(self.adaptee)
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return res.Export(), nil
 }
 
 // deleteMethod is a delete adapter method.
-func (self *goEnvironmentAdapter) deleteMethod() error {
+func (self *goEnvironmentAdapter) deleteMethod() (interface{}, error) {
 	fun, ok := goja.AssertFunction(self.adaptee.Get("delete"))
 	if !ok {
-		return fmt.Errorf("%w: delete", errors.ErrUnsupported)
+		return nil, fmt.Errorf("%w: delete", errors.ErrUnsupported)
 	}
 
-	_, err := fun(self.adaptee)
+	res, err := fun(self.adaptee)
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return res.Export(), nil
 }
 
 // applyMethod is a apply adapter method.
@@ -262,15 +268,18 @@ func (self *goEnvironmentAdapter) applySpecMethod(specArg string) error {
 }
 
 // waitMethod is a wait adapter method.
-func (self *goEnvironmentAdapter) waitMethod(objArg interface{}) error {
+func (self *goEnvironmentAdapter) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
 	fun, ok := goja.AssertFunction(self.adaptee.Get("wait"))
 	if !ok {
-		return fmt.Errorf("%w: wait", errors.ErrUnsupported)
+		return nil, fmt.Errorf("%w: wait", errors.ErrUnsupported)
 	}
 
-	_, err := fun(self.adaptee)
+	res, err := fun(self.adaptee)
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return res.Export(), nil
 }
 
 // jsEnvironmentTo setup Environment JavaScript object from jsEnvironment.

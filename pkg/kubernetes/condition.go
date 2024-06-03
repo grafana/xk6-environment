@@ -1,21 +1,14 @@
 package kubernetes
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
-	"xk6-environment/pkg/fs"
-
-	k6crd "github.com/grafana/k6-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8Yaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
-// WaitCondition is meant to help decide what is the end of the test.
+// WaitCondition indicates how long to wait
 type WaitCondition struct {
 	// what was configured
 	// is condition on the test execution as a whole?
@@ -23,40 +16,89 @@ type WaitCondition struct {
 	isTestExecution bool
 	conditionKind   string // finished | error
 
-	isTimeout bool
-	duration  time.Duration
+	interval, timeout time.Duration
 
-	// k8s resource
+	Resource // what resource to watch
+	State    // we wait until certain state
+
+	condF func(*Client) func(context.Context) (done bool, err error)
+}
+
+type Resource struct {
 	Kind, Name, Namespace string
-	Reason                string // for events
-	Condition, Status     string // for conditions
-	Log                   string // for logs
-
-	condF func(context.Context) (done bool, err error)
 }
 
-func NewWaitCondition(s string) (*WaitCondition, error) {
-	var wc WaitCondition
+type State struct {
+	StateType
+	Reason                   string // for events
+	Status, Value, Condition string // for .status fields
+	// Log               string // for logs
+}
 
-	// TODO: add validation
-	ss := strings.Split(s, "=")
-	switch ss[0] {
-	case "test":
-		wc.isTestExecution = true
-		wc.conditionKind = ss[1]
-		break
-	case "timeout":
-		wc.isTimeout = true
-		if d, err := time.ParseDuration(ss[1]); err != nil {
-			return nil, err
-		} else {
-			wc.duration = d
-		}
+type StateType int
+
+const (
+	Invalid StateType = iota
+	Event
+	Status
+)
+
+func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
+	waitOptions, ok := conditionArg.(map[string]interface{})
+	if !ok {
+		err = fmt.Errorf("wait() requires an object that can be converted to map[string]interface{}, got: %+v", conditionArg)
+		return
 	}
+	wc = &WaitCondition{}
+	// set defaults
+	wc.interval, wc.timeout = 2*time.Second, 1*time.Hour
 
-	return &wc, nil
+	// extract whatever possible
+	wc.Kind, _ = waitOptions["kind"].(string)
+	wc.Name, _ = waitOptions["name"].(string)
+	wc.Namespace, _ = waitOptions["namespace"].(string)
+	wc.Reason, _ = waitOptions["reason"].(string)
+	wc.Status, _ = waitOptions["status"].(string)
+	wc.Value, _ = waitOptions["value"].(string)
+	wc.Condition, _ = waitOptions["condition"].(string)
+
+	wc.DeriveType()
+	if !wc.Validate() {
+		return nil, fmt.Errorf("format of condition for wait() is invalid; refer to documentation")
+	}
+	return
 }
 
+func (wc *WaitCondition) DeriveType() {
+	if len(wc.Reason) > 0 {
+		wc.StateType = Event
+	} else if len(wc.Condition) > 0 || (len(wc.Status) > 0 && len(wc.Value) > 0) {
+		wc.StateType = Status
+	} else {
+		wc.StateType = Invalid
+	}
+}
+
+func (wc *WaitCondition) Validate() bool {
+	return wc.StateType > Invalid &&
+		len(wc.Kind) > 0 && len(wc.Namespace) > 0 && len(wc.Name) > 0
+}
+
+func (wc *WaitCondition) TimeParams(interval, timeout time.Duration) {
+	wc.interval, wc.timeout = interval, timeout
+}
+
+func (wc *WaitCondition) Build() {
+	switch wc.StateType {
+	case Status:
+		wc.crdStatusCondition()
+
+	default: // == Event
+		wc.eventCondition()
+	}
+}
+
+/*
 // wait conditon must be applied to specific test to be usable
 func (wc *WaitCondition) Apply(c *Client, testName string, td fs.TestDef) error {
 	// TODO: refactor this many-IFs monster!
@@ -91,9 +133,10 @@ func (wc *WaitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 			wc.condF = func(ctx context.Context) (done bool, err error) {
 				// Why not subscribe to events here: K6 CRD for instance does not even have
 				// events yet. So polling state instead: even if we add events to K6 CRD tomorrow,
-				// it'd be less stable than state. Consider other options.
+				// it'd be less stable than state.
 				// OTOH, events might be an option for Job (k6-standalone mode) as it's a builtin resource.
 
+				// Figuring out URIs:
 				// /apis/k6.io/v1alpha1/k6s - to get K6List
 				// /apis/k6.io/v1alpha1/namespaces/default/k6s/k6-sample - to get K6
 				// Ref: https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
@@ -158,28 +201,55 @@ func (wc *WaitCondition) Apply(c *Client, testName string, td fs.TestDef) error 
 
 	return nil
 }
-
-func (wc *WaitCondition) eventWaiter(c *Client) error {
-	wc.condF = func(ctx context.Context) (done bool, err error) {
-		events, err := c.clientset.CoreV1().Events(wc.Namespace).List(ctx, metav1.ListOptions{
-			TypeMeta: metav1.TypeMeta{
-				Kind: wc.Kind,
-			},
-			FieldSelector: "involvedObject.name=" + wc.Name,
-		})
-		if err != nil {
-			return
-		}
-
-		for _, event := range events.Items {
-			if event.Reason == wc.Reason {
-				done = true
+*/
+func (wc *WaitCondition) crdStatusCondition() {
+	wc.condF = func(c *Client) func(ctx context.Context) (done bool, err error) {
+		return func(ctx context.Context) (done bool, err error) {
+			// we don't know when CRD would be first created, so we should
+			// look up GVK whenever a new wait condition is required
+			gvk, err := kindToGVK(wc.Kind, c.discoveryClient)
+			fmt.Println(wc.Kind, gvk, err)
+			if err != nil {
 				return
 			}
+			fmt.Println("gvk", gvk)
+
+			// we need resource to be able to query dynamic client
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return
+			}
+			fmt.Println("restMapping", restMapping)
+
+			unstructured, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
+			fmt.Println("unstructured", unstructured, err)
+
+			return
 		}
-
-		return
 	}
+}
 
-	return nil
+func (wc *WaitCondition) eventCondition() {
+	wc.condF = func(c *Client) func(ctx context.Context) (done bool, err error) {
+		return func(ctx context.Context) (done bool, err error) {
+			events, err := c.clientset.CoreV1().Events(wc.Namespace).List(ctx, metav1.ListOptions{
+				TypeMeta: metav1.TypeMeta{
+					Kind: wc.Kind,
+				},
+				FieldSelector: "involvedObject.name=" + wc.Name,
+			})
+			if err != nil {
+				return
+			}
+
+			for _, event := range events.Items {
+				if event.Reason == wc.Reason {
+					done = true
+					return
+				}
+			}
+
+			return
+		}
+	}
 }

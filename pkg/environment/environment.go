@@ -167,7 +167,6 @@ func (e *Environment) RunTest(ctx context.Context) error {
 	return nil
 }
 
-// non-public in xk6-environment
 func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) error {
 	if err := e.getParent(ctx); err != nil {
 		return err
@@ -177,9 +176,9 @@ func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) er
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	if err := wc.Apply(e.kubernetesClient, e.TestName, e.Test.Def); err != nil {
-		return err
-	}
+	// if err := wc.Apply(e.kubernetesClient, e.TestName, e.Test.Def); err != nil {
+	// 	return err
+	// }
 	if err := e.kubernetesClient.Wait(ctx, wc); err != nil {
 		return err
 	}

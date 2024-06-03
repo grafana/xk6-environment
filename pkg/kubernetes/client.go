@@ -8,8 +8,10 @@ import (
 	"xk6-environment/pkg/fs"
 
 	"github.com/grafana/xk6-kubernetes/pkg/resources"
+
 	"k8s.io/client-go/discovery"
-	memory "k8s.io/client-go/discovery/cached"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
@@ -50,36 +52,45 @@ func getClientConfig(configPath string) (*rest.Config, error) {
 
 type Client struct {
 	*resources.Client
-	configPath string
-	clientset  *k8s.Clientset
+	discoveryClient *discovery.DiscoveryClient
+	configPath      string
+	restConfig      *rest.Config
+	clientset       *k8s.Clientset
+	dynamicClient   *dynamic.DynamicClient
+	restMapper      *restmapper.DeferredDiscoveryRESTMapper
 }
 
-func NewClient(ctx context.Context, configPath string) (*Client, error) {
-	restConfig, err := getClientConfig(configPath)
+func NewClient(ctx context.Context, configPath string) (client *Client, err error) {
+	client = &Client{
+		configPath: configPath,
+	}
+	client.restConfig, err = getClientConfig(configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := resources.NewFromConfig(ctx, restConfig)
+	c, err := resources.NewFromConfig(ctx, client.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	client.Client = c
+
+	client.discoveryClient, err = discovery.NewDiscoveryClientForConfig(client.restConfig)
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(client.discoveryClient))
 	if err != nil {
 		return nil, err
 	}
 
-	// apparently, mapper is a requirement for k8s ops to work...
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
+	client.Client.WithMapper(mapper)
+	client.restMapper = mapper
+
+	client.clientset, err = k8s.NewForConfig(client.restConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	c.WithMapper(mapper)
-
-	clientset, err := k8s.NewForConfig(restConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Client{c, configPath, clientset}, nil
+	client.dynamicClient, err = dynamic.NewForConfig(client.restConfig)
+	return
 }
 
 func (c *Client) Deploy(ke fs.KubernetesEnv) error {
