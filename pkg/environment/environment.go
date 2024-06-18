@@ -116,24 +116,24 @@ func (e *Environment) Describe() string {
 }
 
 // to be called in setup()
-func (e *Environment) Create(ctx context.Context) error {
-	if err := e.getParent(ctx); err != nil {
+func (e *Environment) Create(ctx context.Context) (err error) {
+	if err = e.getParent(ctx); err != nil {
 		return err
 	}
 
-	if err := vcluster.Create(e.TestName); err != nil {
-		return err
+	// always return to parent context so that
+	// the next operations can continue
+	defer e.parent(ctx)
+
+	if err = vcluster.Create(e.TestName); err != nil {
+		return
 	}
 
-	if err := e.InitKubernetes(ctx, e.TestName); err != nil {
+	if err = e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	if err := e.kubernetesClient.Deploy(e.Test.Kubernetes); err != nil {
-		return err
-	}
-
-	return e.parent(ctx)
+	return e.kubernetesClient.Deploy(e.Test.Kubernetes)
 }
 
 // to be called in teardown()
@@ -167,23 +167,20 @@ func (e *Environment) RunTest(ctx context.Context) error {
 	return nil
 }
 
-func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) error {
-	if err := e.getParent(ctx); err != nil {
-		return err
+func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (err error) {
+	if err = e.getParent(ctx); err != nil {
+		return
 	}
+	defer e.parent(ctx)
 
-	if err := e.InitKubernetes(ctx, e.TestName); err != nil {
+	if err = e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
 	// if err := wc.Apply(e.kubernetesClient, e.TestName, e.Test.Def); err != nil {
 	// 	return err
 	// }
-	if err := e.kubernetesClient.Wait(ctx, wc); err != nil {
-		return err
-	}
-
-	return e.parent(ctx)
+	return e.kubernetesClient.Wait(ctx, wc)
 }
 
 // currently unused
@@ -200,18 +197,16 @@ func (e *Environment) Apply(ctx context.Context, file string) error {
 	return e.ApplySpec(ctx, string(data))
 }
 
-func (e *Environment) ApplySpec(ctx context.Context, spec string) error {
-	if err := e.getParent(ctx); err != nil {
-		return err
+func (e *Environment) ApplySpec(ctx context.Context, spec string) (err error) {
+	if err = e.getParent(ctx); err != nil {
+		return
 	}
+	defer e.parent(ctx)
 
-	if err := e.InitKubernetes(ctx, e.TestName); err != nil {
+	if err = e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	if err := e.kubernetesClient.Apply(spec); err != nil {
-		return err
-	}
-
-	return e.parent(ctx)
+	err = e.kubernetesClient.Apply(spec)
+	return err
 }
