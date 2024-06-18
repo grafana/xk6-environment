@@ -24,7 +24,7 @@ type goModuleImpl struct{}
 var _ goModule = (*goModuleImpl)(nil)
 
 // newEnvironment is a goModule method implementation.
-func (self *goModuleImpl) newEnvironment(nameArg string, typeArg string, initFolderArg string) (goEnvironment, error) {
+func (self *goModuleImpl) newEnvironment(paramsArg interface{}) (goEnvironment, error) {
 	return nil, errors.ErrUnsupported
 }
 
@@ -49,13 +49,13 @@ func (self *goEnvironmentImpl) deleteMethod() (interface{}, error) {
 }
 
 // applyMethod is a goEnvironment method implementation.
-func (self *goEnvironmentImpl) applyMethod(fileArg string) error {
-	return errors.ErrUnsupported
+func (self *goEnvironmentImpl) applyMethod(fileArg string) (interface{}, error) {
+	return nil, errors.ErrUnsupported
 }
 
 // applySpecMethod is a goEnvironment method implementation.
-func (self *goEnvironmentImpl) applySpecMethod(specArg string) error {
-	return errors.ErrUnsupported
+func (self *goEnvironmentImpl) applySpecMethod(specArg string) (interface{}, error) {
+	return nil, errors.ErrUnsupported
 }
 
 // waitMethod is a goEnvironment method implementation.

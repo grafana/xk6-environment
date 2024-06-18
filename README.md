@@ -69,7 +69,7 @@ export default function () {
 ### Environment()
 
 ```ts
-constructor(name: string, type: string, initFolder: string);
+constructor(params: object);
 ```
 
 -	`name` name of the environment
@@ -95,13 +95,13 @@ delete();
 ### Environment.apply()
 
 ```ts
-apply(file: string): void;
+apply(file: string);
 ```
 
 ### Environment.applySpec()
 
 ```ts
-applySpec(spec: string): void;
+applySpec(spec: string);
 ```
 
 ### Environment.wait()

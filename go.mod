@@ -10,7 +10,6 @@ require (
 	go.uber.org/zap v1.25.0
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.29.2
-	k8s.io/apiextensions-apiserver v0.28.0
 	k8s.io/apimachinery v0.29.2
 	k8s.io/client-go v0.29.2
 	sigs.k8s.io/kustomize/api v0.17.1
@@ -24,6 +23,7 @@ require (
 	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

@@ -94,7 +94,7 @@ func jsModuleFrom(adaptee goModule) jsModule {
 // ˮsummaryˮ
 type goModule interface {
 	// newEnvironment is the go factory method for the Environment type.
-	newEnvironment(nameArg string, typeArg string, initFolderArg string) (goEnvironment, error)
+	newEnvironment(paramsArg interface{}) (goEnvironment, error)
 
 	// defaultEnvironmentGetter is the go getter method for the defaultEnvironment property.
 	//
@@ -139,10 +139,10 @@ type goEnvironment interface {
 	deleteMethod() (interface{}, error)
 
 	// applyMethod is the go representation of the apply method.
-	applyMethod(fileArg string) error
+	applyMethod(fileArg string) (interface{}, error)
 
 	// applySpecMethod is the go representation of the applySpec method.
-	applySpecMethod(specArg string) error
+	applySpecMethod(specArg string) (interface{}, error)
 
 	// waitMethod is the go representation of the wait method.
 	waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error)
@@ -177,22 +177,22 @@ func (self *jsEnvironmentAdapter) deleteMethod(call goja.FunctionCall, vm *goja.
 
 // applyMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) applyMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
-	err := self.adaptee.applyMethod(call.Argument(0).String())
+	v, err := self.adaptee.applyMethod(call.Argument(0).String())
 	if err != nil {
 		panic(err)
 	}
 
-	return goja.Undefined()
+	return vm.ToValue(v)
 }
 
 // applySpecMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) applySpecMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
-	err := self.adaptee.applySpecMethod(call.Argument(0).String())
+	v, err := self.adaptee.applySpecMethod(call.Argument(0).String())
 	if err != nil {
 		panic(err)
 	}
 
-	return goja.Undefined()
+	return vm.ToValue(v)
 }
 
 // waitMethod is a jsEnvironment adapter method.
@@ -244,27 +244,33 @@ func (self *goEnvironmentAdapter) deleteMethod() (interface{}, error) {
 }
 
 // applyMethod is a apply adapter method.
-func (self *goEnvironmentAdapter) applyMethod(fileArg string) error {
+func (self *goEnvironmentAdapter) applyMethod(fileArg string) (interface{}, error) {
 	fun, ok := goja.AssertFunction(self.adaptee.Get("apply"))
 	if !ok {
-		return fmt.Errorf("%w: apply", errors.ErrUnsupported)
+		return nil, fmt.Errorf("%w: apply", errors.ErrUnsupported)
 	}
 
-	_, err := fun(self.adaptee)
+	res, err := fun(self.adaptee)
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return res.Export(), nil
 }
 
 // applySpecMethod is a applySpec adapter method.
-func (self *goEnvironmentAdapter) applySpecMethod(specArg string) error {
+func (self *goEnvironmentAdapter) applySpecMethod(specArg string) (interface{}, error) {
 	fun, ok := goja.AssertFunction(self.adaptee.Get("applySpec"))
 	if !ok {
-		return fmt.Errorf("%w: applySpec", errors.ErrUnsupported)
+		return nil, fmt.Errorf("%w: applySpec", errors.ErrUnsupported)
 	}
 
-	_, err := fun(self.adaptee)
+	res, err := fun(self.adaptee)
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return res.Export(), nil
 }
 
 // waitMethod is a wait adapter method.
@@ -326,12 +332,12 @@ func goEnvironmentToObject(v goEnvironment, vm *goja.Runtime) *goja.Object {
 }
 
 // goEnvironmentConstructor creates new goEnvironment instance.
-type goEnvironmentConstructor func(nameArg string, typeArg string, initFolderArg string) (goEnvironment, error)
+type goEnvironmentConstructor func(paramsArg interface{}) (goEnvironment, error)
 
 // newEnvironmentConstructor creates Environment JavaScript constructor.
 func newEnvironmentConstructor(ctor goEnvironmentConstructor) func(call goja.ConstructorCall, vm *goja.Runtime) *goja.Object {
 	return func(call goja.ConstructorCall, vm *goja.Runtime) *goja.Object {
-		adaptee, err := ctor(call.Argument(0).String(), call.Argument(1).String(), call.Argument(2).String())
+		adaptee, err := ctor(call.Argument(0).Export())
 		if err != nil {
 			panic(err)
 		}

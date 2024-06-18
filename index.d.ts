@@ -36,14 +36,14 @@ export declare class Environment {
    * @param type implementation for the environment (only "vcluster" for now)
    * @param initFolder folder containing base manifests to apply on initialization of environment
    */
-  constructor(name: string, type: string, initFolder: string);
+  constructor(params: object);
 
   init();
   delete();
 
   // apply(files: string[]); arrays are not supported by Tygor :sweat_smile:
-  apply(file: string): void;
-  applySpec(spec: string): void; // we have to use a diff name here: method overload is not supported
+  apply(file: string);
+  applySpec(spec: string); // we have to use a diff name here: method overload is not supported
 
   // wait(condition: any);
   wait(condition: object, opts?: object);

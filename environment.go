@@ -31,7 +31,14 @@ type goModuleImpl struct {
 
 var _ goModule = (*goModuleImpl)(nil)
 
-func (mod *goModuleImpl) newEnvironment(name, iType, initFolder string) (goEnvironment, error) {
+func (mod *goModuleImpl) newEnvironment(params interface{}) (goEnvironment, error) {
+	// the only implementation supported now is vcluster so
+	// omitting the parameter here for simplicity
+	name, _, initFolder, err := processParams(params)
+	if err != nil {
+		return nil, err
+	}
+
 	opts := environment.JSOptions{
 		Source: initFolder,
 	}
@@ -48,7 +55,8 @@ func (mod *goModuleImpl) newEnvironment(name, iType, initFolder string) (goEnvir
 
 	env.JSOptions = opts
 
-	env.SetTestName(env.Test.FolderName())
+	// env.SetTestName(env.Test.FolderName())
+	env.SetTestName(name)
 
 	return goEnvironmentImpl{
 		Environment: env,
@@ -69,7 +77,11 @@ var _ goEnvironment = (*goEnvironmentImpl)(nil)
 
 // initMethod is the go representation of the create method.
 func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
-	return impl.Create(impl.vu.Context()), nil
+	if err := impl.Create(impl.vu.Context()); err != nil {
+		return err.Error(), nil
+	}
+
+	return nil, nil
 }
 
 // runTestMethod is the go representation of the runTest method.
@@ -79,17 +91,29 @@ func (impl goEnvironmentImpl) runTestMethod() error {
 
 // deleteMethod is the go representation of the delete method.
 func (impl goEnvironmentImpl) deleteMethod() (interface{}, error) {
-	return impl.Delete(impl.vu.Context()), nil
+	if err := impl.Delete(impl.vu.Context()); err != nil {
+		return err.Error(), nil
+	}
+
+	return nil, nil
 }
 
 // applyMethod is the go representation of the apply method.
-func (impl goEnvironmentImpl) applyMethod(fileArg string) error {
-	return impl.Apply(impl.vu.Context(), fileArg)
+func (impl goEnvironmentImpl) applyMethod(fileArg string) (interface{}, error) {
+	if err := impl.Apply(impl.vu.Context(), fileArg); err != nil {
+		return err.Error(), nil
+	}
+
+	return nil, nil
 }
 
 // applySpecMethod is the go representation of the applySpec method.
-func (impl goEnvironmentImpl) applySpecMethod(specArg string) error {
-	return impl.ApplySpec(impl.vu.Context(), specArg)
+func (impl goEnvironmentImpl) applySpecMethod(specArg string) (interface{}, error) {
+	if err := impl.ApplySpec(impl.vu.Context(), specArg); err != nil {
+		return err.Error(), nil
+	}
+
+	return nil, nil
 }
 
 func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
@@ -110,7 +134,27 @@ func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg inter
 
 	wc.Build()
 
-	return impl.Wait(impl.vu.Context(), wc), nil
+	if err := impl.Wait(impl.vu.Context(), wc); err != nil {
+		return err.Error(), nil
+	}
+
+	return nil, nil
+}
+
+// TODO: tygor issue for this boilerplate
+func processParams(paramsArg interface{}) (name, implementation, initFolder string, err error) {
+	e := fmt.Errorf(`Environment() expects an object; got: %+v`, paramsArg)
+	params, ok := paramsArg.(map[string]interface{})
+	if !ok {
+		err = e
+		return
+	}
+
+	name, _ = params["name"].(string)
+	implementation, _ = params["implementation"].(string)
+	initFolder, _ = params["initFolder"].(string)
+
+	return
 }
 
 func waitOptions(optsArg interface{}) (interval, timeout time.Duration, err error) {
