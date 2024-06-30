@@ -67,10 +67,9 @@ func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
 	wc.Name, _ = waitOptions["name"].(string)
 	wc.Namespace, _ = waitOptions["namespace"].(string)
 	wc.Reason, _ = waitOptions["reason"].(string)
-	if status, ok := waitOptions["status"].(string); ok {
+	if status, ok := waitOptions["value"].(string); ok {
 		wc.Status = metav1.ConditionStatus(status)
 	}
-	// wc.Value, _ = waitOptions["value"].(string)
 	wc.ConditionType, _ = waitOptions["condition_type"].(string)
 
 	wc.DeriveType()
@@ -110,142 +109,39 @@ func (wc *WaitCondition) Build() {
 	}
 }
 
-/*
-// wait conditon must be applied to specific test to be usable
-
-	func (wc *WaitCondition) Apply(c *Client, testName string, td fs.TestDef) error {
-		// TODO: refactor this many-IFs monster!
-
-		if len(wc.Reason) > 0 {
-			return wc.eventWaiter(c)
-		}
-
-		wc.Name = testName
-
-		if wc.isTestExecution {
-			if td.IsYaml() {
-				// k6-operator mode
-
-				// we'll need to parse spec to get name and namespace
-				rawSpec, err := td.ReadTest()
-				if err != nil {
-					return err
-				}
-
-				var crdSpec k6crd.K6
-				dec := k8Yaml.NewYAMLOrJSONDecoder(bytes.NewReader(rawSpec), 1000)
-				if err := dec.Decode(&crdSpec); err != nil {
-					return err
-				}
-				if len(crdSpec.Namespace) == 0 {
-					crdSpec.Namespace = "default"
-				}
-				wc.Kind = crdSpec.Kind
-				wc.Namespace = crdSpec.Namespace
-
-				wc.condF = func(ctx context.Context) (done bool, err error) {
-					// Why not subscribe to events here: K6 CRD for instance does not even have
-					// events yet. So polling state instead: even if we add events to K6 CRD tomorrow,
-					// it'd be less stable than state.
-					// OTOH, events might be an option for Job (k6-standalone mode) as it's a builtin resource.
-
-					// Figuring out URIs:
-					// /apis/k6.io/v1alpha1/k6s - to get K6List
-					// /apis/k6.io/v1alpha1/namespaces/default/k6s/k6-sample - to get K6
-					// Ref: https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
-					crdList := "testruns"
-					if wc.Kind == "K6" {
-						crdList = "k6s"
-					}
-
-					d, err := c.clientset.RESTClient().Get().AbsPath(
-						fmt.Sprintf("/apis/k6.io/v1alpha1/namespaces/%s/%s/%s", wc.Namespace, crdList, crdSpec.Name),
-					).DoRaw(ctx)
-					if err != nil {
-						return false, err
-					}
-					var k6 k6crd.K6
-					if err := json.Unmarshal(d, &k6); err != nil {
-						return false, err
-					}
-
-					if wc.conditionKind == "finished" {
-						if k6.Status.Stage == "finished" {
-							return true, nil
-						}
-					} else {
-						if k6.Status.Stage == "error" {
-							return true, nil
-						}
-					}
-
-					return false, nil
-				}
-			} else {
-				// k6-standalone mode
-
-				wc.Kind = "Job"
-				wc.Namespace = "default"
-
-				wc.condF = func(ctx context.Context) (done bool, err error) {
-					job, err := c.clientset.BatchV1().Jobs(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
-					if err != nil {
-						return false, err
-					}
-
-					if job.Status.Active > 0 {
-						return false, nil
-					}
-
-					if wc.conditionKind == "finished" {
-						if job.Status.Succeeded > 0 {
-							return true, nil
-						}
-					} else {
-						if job.Status.Failed > 0 {
-							return true, nil
-						}
-					}
-
-					return false, nil
-				}
-			}
-		}
-
-		return nil
-	}
-*/
 func (wc *WaitCondition) crdStatusCondition() {
 	wc.condF = func(c *Client) func(ctx context.Context) (done bool, err error) {
 		return func(ctx context.Context) (done bool, err error) {
 			// we don't know when CRD would be first created, so we should
 			// look up GVK whenever a new wait condition is required
 			gvk, err := kindToGVK(wc.Kind, c.discoveryClient)
-			// fmt.Println("gvk", wc.Kind, gvk, err)
 			if err != nil {
 				return false, err
 			}
 
 			// we need resource to be able to query dynamic client
 			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			// fmt.Println(restMapping, err)
 			if err != nil {
 				return false, err
 			}
 
 			unstructured, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
 			if err != nil {
-				return
+				// From here on, we try to wait until resource reaches required state,
+				// so don't return this error.
+				// TODO add some logging here?
+				return false, nil
 			}
-			// fmt.Println(gvk, restMapping)
 
 			c, found, err := metav1u.NestedSlice(unstructured.UnstructuredContent(), "status", "conditions")
-			// fmt.Println(c, found, err)
 			if err != nil {
+				// conversion error should be returned
 				return false, err
 			}
 			if !found {
-				return false, fmt.Errorf("resource %s without conditions", wc.Name)
+				// Resource is without conditions: wait more in case
+				// its conditions change.
+				return false, nil
 			}
 
 			cond := meta.FindStatusCondition(getConditions(c), wc.ConditionType)
@@ -253,7 +149,7 @@ func (wc *WaitCondition) crdStatusCondition() {
 				return true, nil
 			}
 
-			return
+			return false, nil
 		}
 	}
 }
