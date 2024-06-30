@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -133,7 +134,7 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	return e.kubernetesClient.Deploy(e.Test.Kubernetes)
+	return e.kubernetesClient.Deploy(ctx, e.Test.Kubernetes)
 }
 
 // to be called in teardown()
@@ -207,6 +208,6 @@ func (e *Environment) ApplySpec(ctx context.Context, spec string) (err error) {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	err = e.kubernetesClient.Apply(spec)
+	err = e.kubernetesClient.Apply(ctx, bytes.NewBufferString(spec))
 	return err
 }

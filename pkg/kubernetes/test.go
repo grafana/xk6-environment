@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -20,7 +21,7 @@ func (c *Client) CreateTest(ctx context.Context, testName string, td fs.TestDef)
 
 	if td.IsYaml() {
 		// k6-operator mode
-		if err := c.Apply(string(d)); err != nil {
+		if err := c.Apply(ctx, bytes.NewBufferString(string(d))); err != nil {
 			return err
 		}
 
