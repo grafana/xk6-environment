@@ -99,17 +99,16 @@ func (wc *WaitCondition) TimeParams(interval, timeout time.Duration) {
 }
 
 func (wc *WaitCondition) Build() {
-	fmt.Println("Build", wc, wc.StateType)
 	switch wc.StateType {
 	case Status:
-		wc.crdStatusCondition()
+		wc.statusCondition()
 
 	default: // == Event
 		wc.eventCondition()
 	}
 }
 
-func (wc *WaitCondition) crdStatusCondition() {
+func (wc *WaitCondition) statusCondition() {
 	wc.condF = func(c *Client) func(ctx context.Context) (done bool, err error) {
 		return func(ctx context.Context) (done bool, err error) {
 			// we don't know when CRD would be first created, so we should
