@@ -22,10 +22,14 @@ type Test struct {
 }
 
 func FindTest(folder string) (*Test, error) {
+	var f = &Test{}
+	if len(folder) == 0 {
+		return f, fmt.Errorf("no init folder specified")
+	}
+
 	fsys := os.DirFS(folder)
 	manifests := make([]string, 0)
 
-	var f = &Test{}
 	// TODO figure out how to remove duplicating
 	f.folder = folder
 	f.Def.folder = folder

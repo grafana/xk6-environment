@@ -43,10 +43,10 @@ func (mod *goModuleImpl) newEnvironment(params interface{}) (goEnvironment, erro
 		Source: initFolder,
 	}
 
-	test, err := fs.FindTest(opts.Source)
-	if err != nil {
-		return nil, fmt.Errorf("Cannot find the test in %s", opts.Source)
-	}
+	// the folder might be empty so skip it
+	// TODO: add some logging here?
+	test, _ := fs.FindTest(opts.Source)
+
 	if err := test.ReadOptions(); err != nil {
 		return nil, fmt.Errorf("Cannot read options ini")
 	}
