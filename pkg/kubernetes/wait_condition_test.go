@@ -24,7 +24,7 @@ func Test_DeriveType(t *testing.T) {
 		},
 		{
 			"status and value result in status type",
-			WaitCondition{State: State{Value: "c", Status: "s"}},
+			WaitCondition{State: State{Status: "c", ConditionType: "s"}},
 			Status,
 		},
 		{
@@ -33,9 +33,9 @@ func Test_DeriveType(t *testing.T) {
 			Invalid,
 		},
 		{
-			"condition results in status type",
-			WaitCondition{State: State{Condition: "c"}},
-			Status,
+			"condition on its own is invalid",
+			WaitCondition{State: State{ConditionType: "c"}},
+			Invalid,
 		},
 	}
 

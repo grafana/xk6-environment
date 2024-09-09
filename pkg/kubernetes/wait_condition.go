@@ -82,7 +82,7 @@ func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
 func (wc *WaitCondition) DeriveType() {
 	if len(wc.Reason) > 0 {
 		wc.StateType = Event
-	} else if len(wc.ConditionType) > 0 || len(wc.Status) > 0 {
+	} else if len(wc.ConditionType) > 0 && len(wc.Status) > 0 {
 		wc.StateType = Status
 	} else {
 		wc.StateType = Invalid

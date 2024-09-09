@@ -124,7 +124,14 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 
 	// always return to parent context so that
 	// the next operations can continue
-	defer e.parent(ctx)
+	defer func() {
+		e := e.parent(ctx)
+		// overwrite return value, only if it's nil;
+		// otherwise, return the error from main function
+		if err == nil {
+			err = e
+		}
+	}()
 
 	if err = vcluster.Create(e.TestName); err != nil {
 		return
@@ -134,7 +141,8 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	return e.kubernetesClient.Deploy(ctx, e.Test.Kubernetes)
+	err = e.kubernetesClient.Deploy(ctx, e.Test.Kubernetes)
+	return
 }
 
 // to be called in teardown()
@@ -172,7 +180,14 @@ func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (e
 	if err = e.getParent(ctx); err != nil {
 		return
 	}
-	defer e.parent(ctx)
+	defer func() {
+		e := e.parent(ctx)
+		// overwrite return value, only if it's nil;
+		// otherwise, return the error from main function
+		if err == nil {
+			err = e
+		}
+	}()
 
 	if err = e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
@@ -181,7 +196,8 @@ func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (e
 	// if err := wc.Apply(e.kubernetesClient, e.TestName, e.Test.Def); err != nil {
 	// 	return err
 	// }
-	return e.kubernetesClient.Wait(ctx, wc)
+	err = e.kubernetesClient.Wait(ctx, wc)
+	return
 }
 
 // currently unused
@@ -202,7 +218,14 @@ func (e *Environment) ApplySpec(ctx context.Context, spec string) (err error) {
 	if err = e.getParent(ctx); err != nil {
 		return
 	}
-	defer e.parent(ctx)
+	defer func() {
+		e := e.parent(ctx)
+		// overwrite return value, only if it's nil;
+		// otherwise, return the error from main function
+		if err == nil {
+			err = e
+		}
+	}()
 
 	if err = e.InitKubernetes(ctx, e.TestName); err != nil {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
