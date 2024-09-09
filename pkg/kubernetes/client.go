@@ -79,6 +79,12 @@ func NewClient(ctx context.Context, configPath string) (client *Client, err erro
 	}
 	client.restMapper = restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(client.discoveryClient))
 
+	// TODO this should be suppressing this warning:
+	// `[controller-runtime] log.SetLogger(...) was never called; logs will not be displayed.`
+	// src: https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/client#New
+	// Possibly related: breaking changes in controller-runtime logger happened here PR 2317:
+	// https://github.com/kubernetes-sigs/controller-runtime/releases/tag/v0.15.0
+	client.restConfig.WarningHandler = rest.NoWarnings{}
 	client.crClient, err = crclient.New(client.restConfig, crclient.Options{
 		Cache: nil,
 	})
