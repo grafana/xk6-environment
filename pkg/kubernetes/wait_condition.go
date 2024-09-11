@@ -12,26 +12,20 @@ import (
 
 // WaitCondition indicates how long to wait
 type WaitCondition struct {
-	// what was configured
-	// is condition on the test execution as a whole?
-	// e.g. in the future it could be IsThreshold
-	isTestExecution bool
-	conditionKind   string // finished | error
-
 	interval, timeout time.Duration
 
-	Resource // what resource to watch
-	State    // we wait until certain state
+	resource // what resource to watch
+	state    // we wait until certain state
 
 	condF func(*Client) func(context.Context) (done bool, err error)
 }
 
-type Resource struct {
+type resource struct {
 	Kind, Name, Namespace string
 }
 
-type State struct {
-	StateType
+type state struct {
+	stateType
 
 	// for events
 	Reason string
@@ -48,15 +42,16 @@ type State struct {
 	// Log               string
 }
 
-type StateType int
+type stateType int
 
 const (
-	Invalid StateType = iota
-	Event
-	StatusCondition
-	StatusCustom
+	invalid stateType = iota
+	event
+	statusCondition
+	statusCustom
 )
 
+// NewWaitCondition constructs WaitCondition from provided configuration.
 func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
 	waitOptions, ok := conditionArg.(map[string]interface{})
 	if !ok {
@@ -86,33 +81,38 @@ func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
 	return
 }
 
+// DeriveType decides the type of WaitCondition.
 func (wc *WaitCondition) DeriveType() {
-	if len(wc.Reason) > 0 {
-		wc.StateType = Event
-	} else if len(wc.ConditionType) > 0 && len(wc.Status) > 0 {
-		wc.StateType = StatusCondition
-	} else if len(wc.StatusKey) > 0 && len(wc.StatusValue) > 0 {
-		wc.StateType = StatusCustom
-	} else {
-		wc.StateType = Invalid
+	switch {
+	case len(wc.Reason) > 0:
+		wc.stateType = event
+	case len(wc.ConditionType) > 0 && len(wc.Status) > 0:
+		wc.stateType = statusCondition
+	case len(wc.StatusKey) > 0 && len(wc.StatusValue) > 0:
+		wc.stateType = statusCustom
+	default:
+		wc.stateType = invalid
 	}
 }
 
+// Validate checks if WaitCondition makes sense.
 func (wc *WaitCondition) Validate() bool {
-	return wc.StateType > Invalid &&
+	return wc.stateType > invalid &&
 		len(wc.Kind) > 0 && len(wc.Namespace) > 0 && len(wc.Name) > 0
 }
 
+// TimeParams sets time parameters.
 func (wc *WaitCondition) TimeParams(interval, timeout time.Duration) {
 	wc.interval, wc.timeout = interval, timeout
 }
 
+// Build builds internal logic for WaitCondition.
 func (wc *WaitCondition) Build() {
-	switch wc.StateType {
-	case StatusCondition:
+	switch wc.stateType {
+	case statusCondition:
 		wc.statusCondition()
 
-	case StatusCustom:
+	case statusCustom:
 		wc.statusCustom()
 
 	default: // == Event
@@ -136,12 +136,15 @@ func (wc *WaitCondition) statusCondition() {
 				return false, err
 			}
 
-			unstructured, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
+			unstructured, err := c.dynamicClient.
+				Resource(restMapping.Resource).
+				Namespace(wc.Namespace).
+				Get(ctx, wc.Name, metav1.GetOptions{})
 			if err != nil {
 				// From here on, we try to wait until resource reaches required state,
 				// so don't return this error.
 				// TODO add some logging here?
-				return false, nil
+				return false, nil //nolint:nilerr
 			}
 
 			c, found, err := metav1u.NestedSlice(unstructured.UnstructuredContent(), "status", "conditions")
@@ -181,12 +184,15 @@ func (wc *WaitCondition) statusCustom() {
 				return false, err
 			}
 
-			unstructured, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
+			unstructured, err := c.dynamicClient.
+				Resource(restMapping.Resource).
+				Namespace(wc.Namespace).
+				Get(ctx, wc.Name, metav1.GetOptions{})
 			if err != nil {
 				// From here on, we try to wait until resource reaches required state,
 				// so don't return this error.
 				// TODO add some logging here?
-				return false, nil
+				return false, nil //nolint:nilerr
 			}
 
 			v, found, err := metav1u.NestedString(unstructured.UnstructuredContent(), "status", wc.StatusKey)

@@ -6,36 +6,46 @@ import (
 	"path/filepath"
 )
 
+// EnvDescription holds key data that describes the
+// Kubernetes environment.
 type EnvDescription struct {
-	Manifests []string
-	i         int
+	Manifests    []string
+	KustomizeDir string
 
 	kustomizationPresent bool
-	KustomizeDir         string
-
-	folder string
+	folder               string
+	i                    int
 }
 
-func (k *EnvDescription) ReadManifest() (string, error) {
-	if k.i >= len(k.Manifests) {
+// ReadManifest reads one manifest file and returns it.
+// The pointer to the "next" manifest in the list is being
+// stored internally.
+func (ed *EnvDescription) ReadManifest() (string, error) {
+	if ed.i >= len(ed.Manifests) {
 		return "", nil
 	}
-	fsys := os.DirFS(k.folder)
-	data, err := fs.ReadFile(fsys, k.Manifests[k.i])
-	k.i++
+	//nolint:forbidigo
+	fsys := os.DirFS(ed.folder)
+	data, err := fs.ReadFile(fsys, ed.Manifests[ed.i])
+	ed.i++
 
 	return string(data), err
 }
 
-func (k EnvDescription) ManifestsLeft() bool {
-	return k.i < len(k.Manifests)
+// ManifestsLeft indicates whether all manifests were read,
+// judging by internal pointer.
+func (ed EnvDescription) ManifestsLeft() bool {
+	return ed.i < len(ed.Manifests)
 }
 
-func (k EnvDescription) IsKustomize() bool {
-	return k.kustomizationPresent
+// IsKustomize indicates whether this environment has
+// kustomization.yaml file.
+func (ed EnvDescription) IsKustomize() bool {
+	return ed.kustomizationPresent
 }
 
-// name of the init folder
-func (f EnvDescription) InitFolder() string {
-	return filepath.Base(f.folder)
+// InitFolder returns the name of the init folder, given
+// during configuration of this environment.
+func (ed EnvDescription) InitFolder() string {
+	return filepath.Base(ed.folder)
 }

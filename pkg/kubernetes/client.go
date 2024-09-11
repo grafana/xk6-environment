@@ -1,3 +1,5 @@
+// Package kubernetes provides the functionality to access and
+// manipulate Kubernetes objects.
 package kubernetes
 
 import (
@@ -5,8 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
-
 	"xk6-environment/pkg/fs"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -54,6 +56,8 @@ func getClientConfig(configPath string) (*rest.Config, error) {
 	return cfg.ClientConfig()
 }
 
+// Client encapsulates the key structures of Kubernetes libraries
+// that are used to access Kubernetes.
 type Client struct {
 	discoveryClient *discovery.DiscoveryClient
 	configPath      string
@@ -64,10 +68,14 @@ type Client struct {
 	crClient        crclient.Client
 }
 
-func NewClient(ctx context.Context, configPath string) (client *Client, err error) {
-	client = &Client{
-		configPath: configPath,
-	}
+// NewClient constructs the Client.
+func NewClient(_ context.Context, configPath string) (*Client, error) {
+	var (
+		client = &Client{
+			configPath: configPath,
+		}
+		err error
+	)
 	client.restConfig, err = getClientConfig(configPath)
 	if err != nil {
 		return nil, err
@@ -98,9 +106,11 @@ func NewClient(ctx context.Context, configPath string) (client *Client, err erro
 	}
 
 	client.dynamicClient, err = dynamic.NewForConfig(client.restConfig)
-	return
+	return client, err
 }
 
+// Deploy deploys the initial environment as described in envDesc, taking
+// care of kustomize specifics if needed.
 func (c *Client) Deploy(ctx context.Context, envDesc *fs.EnvDescription) error {
 	if envDesc.IsKustomize() {
 		yamls, err := sortResources(envDesc.KustomizeDir)
@@ -132,6 +142,7 @@ func (c *Client) Deploy(ctx context.Context, envDesc *fs.EnvDescription) error {
 	return nil
 }
 
+// Apply deploys the manifest in data.
 func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 	d := yaml.NewYAMLOrJSONDecoder(data, 4096)
 
@@ -145,7 +156,7 @@ func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 		return err
 	}
 
-	if obj, gvk, err = unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, obj); err != nil {
+	if _, gvk, err = unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, obj); err != nil {
 		return err
 	}
 
@@ -155,7 +166,11 @@ func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 	if err = json.Unmarshal(ext.Raw, &blob); err != nil {
 		return err
 	}
-	unstructObj.Object = blob.(map[string]interface{})
+	m, ok := blob.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("failed to extract map[string]interface{} from the object during apply")
+	}
+	unstructObj.Object = m
 
 	mapper, err := c.crClient.RESTMapper().RESTMapping(gvk.GroupKind())
 	if err != nil {
@@ -169,5 +184,10 @@ func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 
 	// server side apply
 	// https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/client#example-Client-Apply
-	return c.crClient.Patch(ctx, &unstructObj, crclient.Apply, crclient.ForceOwnership, crclient.FieldOwner("xk6-environment"))
+	return c.crClient.Patch(
+		ctx,
+		&unstructObj,
+		crclient.Apply,
+		crclient.ForceOwnership,
+		crclient.FieldOwner("xk6-environment"))
 }

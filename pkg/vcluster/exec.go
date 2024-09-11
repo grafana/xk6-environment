@@ -1,3 +1,4 @@
+// Package vcluster provides functionality to manipulate vclusters.
 package vcluster
 
 import (
@@ -7,24 +8,22 @@ import (
 
 // Temporary! Replace with Helm chart deployment.
 
+// Create creates a vcluster with the given name.
 func Create(name string) error {
 	// This command connects by default; without connection, vcluster doesn't create kubectl context
 	// Flags checked and removed: "--update-current=true", "--connect=false")
-	cmd := exec.Command("vcluster", "create", name, fmt.Sprintf("--kube-config-context-name=%s", name))
+	cmd := exec.Command("vcluster", "create", name, fmt.Sprintf("--kube-config-context-name=%s", name)) // #nosec G204
 
 	_, err := cmd.Output()
-	// fmt.Println(cmd.String())
-	// fmt.Println(string(out))
 	return err
 }
 
+// Delete removes the vcluster with the given name.
 func Delete(name string) error {
 	// vcluster disconnect won't work here;
 	// probably because we connected "manually"
 	cmd := exec.Command("vcluster", "delete", name)
 
-	out, err := cmd.Output()
-	fmt.Println(cmd.String())
-	fmt.Println(string(out))
+	_, err := cmd.Output()
 	return err
 }

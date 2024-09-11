@@ -10,42 +10,42 @@ func Test_DeriveType(t *testing.T) {
 	testCases := []struct {
 		name         string
 		wc           WaitCondition
-		expectedType StateType
+		expectedType stateType
 	}{
 		{
 			"empty is invalid",
-			WaitCondition{State: State{}},
-			Invalid,
+			WaitCondition{state: state{}},
+			invalid,
 		},
 		{
 			"reason results in event",
-			WaitCondition{State: State{Reason: "r"}},
-			Event,
+			WaitCondition{state: state{Reason: "r"}},
+			event,
 		},
 		{
 			"status and value result in status condition type",
-			WaitCondition{State: State{Status: "c", ConditionType: "s"}},
-			StatusCondition,
+			WaitCondition{state: state{Status: "c", ConditionType: "s"}},
+			statusCondition,
 		},
 		{
 			"status key and value result in custom status type",
-			WaitCondition{State: State{StatusKey: "k", StatusValue: "v"}},
-			StatusCustom,
+			WaitCondition{state: state{StatusKey: "k", StatusValue: "v"}},
+			statusCustom,
 		},
 		{
 			"status on its own is invalid",
-			WaitCondition{State: State{Status: "s"}},
-			Invalid,
+			WaitCondition{state: state{Status: "s"}},
+			invalid,
 		},
 		{
 			"status key is invalid on its own",
-			WaitCondition{State: State{StatusKey: "k"}},
-			Invalid,
+			WaitCondition{state: state{StatusKey: "k"}},
+			invalid,
 		},
 		{
 			"condition on its own is invalid",
-			WaitCondition{State: State{ConditionType: "c"}},
-			Invalid,
+			WaitCondition{state: state{ConditionType: "c"}},
+			invalid,
 		},
 	}
 
@@ -53,8 +53,9 @@ func Test_DeriveType(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 			testCase.wc.DeriveType()
-			assert.Equal(t, testCase.expectedType, testCase.wc.StateType)
+			assert.Equal(t, testCase.expectedType, testCase.wc.stateType)
 		})
 	}
 }
@@ -72,37 +73,37 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			"invalid type",
-			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}},
+			WaitCondition{resource: resource{Kind: "k", Namespace: "ns", Name: "n"}},
 			false,
 		},
 		{
 			"all valid for event type",
-			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}, State: State{StateType: Event}},
+			WaitCondition{resource: resource{Kind: "k", Namespace: "ns", Name: "n"}, state: state{stateType: event}},
 			true,
 		},
 		{
 			"all valid for status condition type",
-			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}, State: State{StateType: StatusCondition}},
+			WaitCondition{resource: resource{Kind: "k", Namespace: "ns", Name: "n"}, state: state{stateType: statusCondition}},
 			true,
 		},
 		{
 			"all valid for custom status type",
-			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}, State: State{StateType: StatusCustom}},
+			WaitCondition{resource: resource{Kind: "k", Namespace: "ns", Name: "n"}, state: state{stateType: statusCustom}},
 			true,
 		},
 		{
 			"incomplete resource",
-			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns"}, State: State{StateType: Event}},
+			WaitCondition{resource: resource{Kind: "k", Namespace: "ns"}, state: state{stateType: event}},
 			false,
 		},
 		{
 			"incomplete resource",
-			WaitCondition{Resource: Resource{Kind: "k", Name: "n"}, State: State{StateType: Event}},
+			WaitCondition{resource: resource{Kind: "k", Name: "n"}, state: state{stateType: event}},
 			false,
 		},
 		{
 			"incomplete resource",
-			WaitCondition{Resource: Resource{Namespace: "ns", Name: "n"}, State: State{StateType: StatusCondition}},
+			WaitCondition{resource: resource{Namespace: "ns", Name: "n"}, state: state{stateType: statusCondition}},
 			false,
 		},
 	}
@@ -111,6 +112,7 @@ func Test_Validate(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, testCase.valid, testCase.wc.Validate())
 		})
 	}

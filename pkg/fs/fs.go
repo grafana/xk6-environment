@@ -1,3 +1,4 @@
+// Package fs provides small abstractions to deal with filesystem.
 package fs
 
 import (
@@ -6,20 +7,21 @@ import (
 	"path/filepath"
 )
 
-// Small abstractions to deal with filesystem
-
+// FindEnv walks the folder and locates Kubernetes manifests
+// as an environment description.
 func FindEnv(folder string) (*EnvDescription, error) {
-	var f = &EnvDescription{}
+	f := &EnvDescription{}
 	if len(folder) == 0 {
 		return f, nil
 	}
 
+	//nolint:forbidigo
 	fsys := os.DirFS(folder)
 	manifests := make([]string, 0)
 
 	f.folder = folder
 
-	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(fsys, ".", func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

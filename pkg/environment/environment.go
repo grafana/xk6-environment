@@ -1,3 +1,5 @@
+// Package environment contains the main implementation for
+// Environment class.
 package environment
 
 import (
@@ -5,8 +7,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
-
 	"xk6-environment/pkg/fs"
 	"xk6-environment/pkg/kubernetes"
 	"xk6-environment/pkg/vcluster"
@@ -21,33 +23,20 @@ type options struct {
 	ConfigPath string
 }
 
-type CriteriaDef struct {
+type criteriaDef struct {
 	Test      string
 	TimeLimit string
 	Event     string
 	Loki      string
 }
 
+// JSOptions holds configuration of environment,
+// as specified by a user in the script.
 type JSOptions struct {
 	Source         string
 	IncludeGrafana bool // not supported yet
-	Criteria       CriteriaDef
+	Criteria       criteriaDef
 	Timeout        string // not supported yet: should be passed to waiting functions
-}
-
-func (opts *JSOptions) getCondition() string {
-	if len(opts.Criteria.Test) > 0 {
-		return fmt.Sprintf("test=%s", opts.Criteria.Test)
-	}
-	if len(opts.Criteria.TimeLimit) > 0 {
-		return fmt.Sprintf("timeout=%s", opts.Criteria.TimeLimit)
-	}
-
-	// not supported yet - don't use it!
-	if len(opts.Criteria.Event) > 0 {
-		return opts.Criteria.Event
-	}
-	return opts.Criteria.Loki
 }
 
 // Environment is the type for our custom API.
@@ -69,6 +58,7 @@ type Environment struct {
 	logger *zap.Logger
 }
 
+// NewEnvironment constructs a new Environment.
 func NewEnvironment(fenv *fs.EnvDescription, logger *zap.Logger) *Environment {
 	return &Environment{
 		opts: &options{
@@ -83,10 +73,13 @@ func NewEnvironment(fenv *fs.EnvDescription, logger *zap.Logger) *Environment {
 	}
 }
 
+// SetTestName set the name of environment.
 func (e *Environment) SetTestName(n string) {
 	e.TestName = n
 }
 
+// InitKubernetes switches to the given Kubernetes context if provided and
+// builds a new Kubernetes client.
 func (e *Environment) InitKubernetes(ctx context.Context, ctxName string) (err error) {
 	if ctxName != "" {
 		if err := kubernetes.SetContext(e.opts.ConfigPath, ctxName); err != nil {
@@ -98,17 +91,18 @@ func (e *Environment) InitKubernetes(ctx context.Context, ctxName string) (err e
 	return
 }
 
-func (e *Environment) getParent(ctx context.Context) (err error) {
+func (e *Environment) getParent(_ context.Context) (err error) {
 	e.ParentContext, err = kubernetes.CurrentContext("")
 	return
 }
 
 // In the end of each k6 lifecycle step, we should go back to parent
 // Kubernetes context, in order to have a clean state to start with
-func (e *Environment) parent(ctx context.Context) error {
+func (e *Environment) parent(_ context.Context) error {
 	return kubernetes.SetContext(e.opts.ConfigPath, e.ParentContext)
 }
 
+// Describe returns a short text description of the Environment.
 func (e *Environment) Describe() string {
 	return fmt.Sprintf(`Test name: %s, with files: %+v. 
 						jsopts: %v,
@@ -116,7 +110,9 @@ func (e *Environment) Describe() string {
 		e.TestName, e.envDesc, e.JSOptions, e.ParentContext)
 }
 
-// to be called in setup()
+// Create creates a vcluster and deploys the initial environment
+// according to user's configuration.
+// Create is meant to be called in setup() of the script.
 func (e *Environment) Create(ctx context.Context) (err error) {
 	if err = e.getParent(ctx); err != nil {
 		return err
@@ -145,8 +141,9 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 	return
 }
 
-// to be called in teardown()
-func (e *Environment) Delete(ctx context.Context) error {
+// Delete deletes a vcluster.
+// Delete is meant to be called in teardown() of the script.
+func (e *Environment) Delete(_ context.Context) error {
 	// This will be needed if / when vcluster is done via Helm
 	// if err := e.InitKubernetes(ctx, ""); err != nil {
 	// 	return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
@@ -159,6 +156,7 @@ func (e *Environment) Delete(ctx context.Context) error {
 	return kubernetes.DeleteContext(e.opts.ConfigPath, e.TestName)
 }
 
+// Wait blocks execution until given wait condition is reached.
 func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (err error) {
 	if err = e.getParent(ctx); err != nil {
 		return
@@ -180,20 +178,25 @@ func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (e
 	return
 }
 
-// currently unused
+// newTestName currently unused
+//
+//nolint:unused
 func newTestName(prefix string) string {
 	t := time.Now()
 	return prefix + t.Format("-060102-150405")
 }
 
+// Apply deploys the manifest file.
 func (e *Environment) Apply(ctx context.Context, file string) error {
-	data, err := os.ReadFile(file)
+	//nolint:forbidigo
+	data, err := os.ReadFile(filepath.Clean(file))
 	if err != nil {
 		return err
 	}
 	return e.ApplySpec(ctx, string(data))
 }
 
+// ApplySpec deploys the manifest spec.
 func (e *Environment) ApplySpec(ctx context.Context, spec string) (err error) {
 	if err = e.getParent(ctx); err != nil {
 		return

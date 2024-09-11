@@ -1,3 +1,4 @@
+// Package environment provides functionality for xk6-environment extension.
 package environment
 
 import (
@@ -54,8 +55,8 @@ func (mod *goModuleImpl) newEnvironment(params interface{}) (goEnvironment, erro
 	env.SetTestName(name)
 
 	return goEnvironmentImpl{
-		Environment: env,
-		vu:          mod.vu,
+		e:  env,
+		vu: mod.vu,
 	}, nil
 }
 
@@ -64,15 +65,17 @@ func (mod *goModuleImpl) defaultEnvironmentGetter() (goEnvironment, error) {
 }
 
 type goEnvironmentImpl struct {
-	*environment.Environment
+	e  *environment.Environment
 	vu modules.VU
 }
 
 var _ goEnvironment = (*goEnvironmentImpl)(nil)
 
 // initMethod is the go representation of the create method.
+//
+//nolint:nilnil,nilerr
 func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
-	if err := impl.Create(impl.vu.Context()); err != nil {
+	if err := impl.e.Create(impl.vu.Context()); err != nil {
 		return err.Error(), nil
 	}
 
@@ -80,8 +83,10 @@ func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
 }
 
 // deleteMethod is the go representation of the delete method.
+//
+//nolint:nilnil,nilerr
 func (impl goEnvironmentImpl) deleteMethod() (interface{}, error) {
-	if err := impl.Delete(impl.vu.Context()); err != nil {
+	if err := impl.e.Delete(impl.vu.Context()); err != nil {
 		return err.Error(), nil
 	}
 
@@ -89,8 +94,10 @@ func (impl goEnvironmentImpl) deleteMethod() (interface{}, error) {
 }
 
 // applyMethod is the go representation of the apply method.
+//
+//nolint:nilnil,nilerr
 func (impl goEnvironmentImpl) applyMethod(fileArg string) (interface{}, error) {
-	if err := impl.Apply(impl.vu.Context(), fileArg); err != nil {
+	if err := impl.e.Apply(impl.vu.Context(), fileArg); err != nil {
 		return err.Error(), nil
 	}
 
@@ -98,14 +105,17 @@ func (impl goEnvironmentImpl) applyMethod(fileArg string) (interface{}, error) {
 }
 
 // applySpecMethod is the go representation of the applySpec method.
+//
+//nolint:nilnil,nilerr
 func (impl goEnvironmentImpl) applySpecMethod(specArg string) (interface{}, error) {
-	if err := impl.ApplySpec(impl.vu.Context(), specArg); err != nil {
+	if err := impl.e.ApplySpec(impl.vu.Context(), specArg); err != nil {
 		return err.Error(), nil
 	}
 
 	return nil, nil
 }
 
+//nolint:nilnil,nilerr
 func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
 	wc, err := kubernetes.NewWaitCondition(conditionArg)
 	if err != nil {
@@ -124,7 +134,7 @@ func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg inter
 
 	wc.Build()
 
-	if err := impl.Wait(impl.vu.Context(), wc); err != nil {
+	if err := impl.e.Wait(impl.vu.Context(), wc); err != nil {
 		return err.Error(), nil
 	}
 
