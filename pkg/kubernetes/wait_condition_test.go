@@ -23,13 +23,23 @@ func Test_DeriveType(t *testing.T) {
 			Event,
 		},
 		{
-			"status and value result in status type",
+			"status and value result in status condition type",
 			WaitCondition{State: State{Status: "c", ConditionType: "s"}},
-			Status,
+			StatusCondition,
+		},
+		{
+			"status key and value result in custom status type",
+			WaitCondition{State: State{StatusKey: "k", StatusValue: "v"}},
+			StatusCustom,
 		},
 		{
 			"status on its own is invalid",
 			WaitCondition{State: State{Status: "s"}},
+			Invalid,
+		},
+		{
+			"status key is invalid on its own",
+			WaitCondition{State: State{StatusKey: "k"}},
 			Invalid,
 		},
 		{
@@ -71,8 +81,13 @@ func Test_Validate(t *testing.T) {
 			true,
 		},
 		{
-			"all valid for status type",
-			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}, State: State{StateType: Status}},
+			"all valid for status condition type",
+			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}, State: State{StateType: StatusCondition}},
+			true,
+		},
+		{
+			"all valid for custom status type",
+			WaitCondition{Resource: Resource{Kind: "k", Namespace: "ns", Name: "n"}, State: State{StateType: StatusCustom}},
 			true,
 		},
 		{
@@ -87,7 +102,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			"incomplete resource",
-			WaitCondition{Resource: Resource{Namespace: "ns", Name: "n"}, State: State{StateType: Status}},
+			WaitCondition{Resource: Resource{Namespace: "ns", Name: "n"}, State: State{StateType: StatusCondition}},
 			false,
 		},
 	}

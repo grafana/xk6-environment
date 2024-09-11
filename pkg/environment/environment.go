@@ -176,9 +176,6 @@ func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (e
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	// if err := wc.Apply(e.kubernetesClient, e.TestName, e.Test.Def); err != nil {
-	// 	return err
-	// }
 	err = e.kubernetesClient.Wait(ctx, wc)
 	return
 }

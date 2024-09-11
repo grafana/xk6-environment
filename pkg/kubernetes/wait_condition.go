@@ -36,9 +36,13 @@ type State struct {
 	// for events
 	Reason string
 
-	// for .status conditions
-	Status        metav1.ConditionStatus
+	// for .status.conditions
+	Status        metav1.ConditionStatus // "value"
 	ConditionType string
+
+	// for .status custom values
+	StatusKey   string
+	StatusValue string
 
 	// for logs
 	// Log               string
@@ -49,7 +53,8 @@ type StateType int
 const (
 	Invalid StateType = iota
 	Event
-	Status
+	StatusCondition
+	StatusCustom
 )
 
 func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
@@ -71,6 +76,8 @@ func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
 		wc.Status = metav1.ConditionStatus(status)
 	}
 	wc.ConditionType, _ = waitOptions["condition_type"].(string)
+	wc.StatusKey, _ = waitOptions["status_key"].(string)
+	wc.StatusValue, _ = waitOptions["status_value"].(string)
 
 	wc.DeriveType()
 	if !wc.Validate() {
@@ -83,7 +90,9 @@ func (wc *WaitCondition) DeriveType() {
 	if len(wc.Reason) > 0 {
 		wc.StateType = Event
 	} else if len(wc.ConditionType) > 0 && len(wc.Status) > 0 {
-		wc.StateType = Status
+		wc.StateType = StatusCondition
+	} else if len(wc.StatusKey) > 0 && len(wc.StatusValue) > 0 {
+		wc.StateType = StatusCustom
 	} else {
 		wc.StateType = Invalid
 	}
@@ -100,11 +109,14 @@ func (wc *WaitCondition) TimeParams(interval, timeout time.Duration) {
 
 func (wc *WaitCondition) Build() {
 	switch wc.StateType {
-	case Status:
+	case StatusCondition:
 		wc.statusCondition()
 
+	case StatusCustom:
+		wc.statusCustom()
+
 	default: // == Event
-		wc.eventCondition()
+		wc.event()
 	}
 }
 
@@ -153,7 +165,51 @@ func (wc *WaitCondition) statusCondition() {
 	}
 }
 
-func (wc *WaitCondition) eventCondition() {
+func (wc *WaitCondition) statusCustom() {
+	wc.condF = func(c *Client) func(ctx context.Context) (done bool, err error) {
+		return func(ctx context.Context) (done bool, err error) {
+			// we don't know when CRD would be first created, so we should
+			// look up GVK whenever a new wait condition is required
+			gvk, err := kindToGVK(wc.Kind, c.discoveryClient)
+			if err != nil {
+				return false, err
+			}
+
+			// we need resource to be able to query dynamic client
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				return false, err
+			}
+
+			unstructured, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(wc.Namespace).Get(ctx, wc.Name, metav1.GetOptions{})
+			if err != nil {
+				// From here on, we try to wait until resource reaches required state,
+				// so don't return this error.
+				// TODO add some logging here?
+				return false, nil
+			}
+
+			v, found, err := metav1u.NestedString(unstructured.UnstructuredContent(), "status", wc.StatusKey)
+			if err != nil {
+				// conversion error should be returned
+				return false, err
+			}
+			if !found {
+				// Resource is without given status key: wait more in case
+				// its .status changes.
+				return false, nil
+			}
+
+			if v == wc.StatusValue {
+				return true, nil
+			}
+
+			return false, nil
+		}
+	}
+}
+
+func (wc *WaitCondition) event() {
 	wc.condF = func(c *Client) func(ctx context.Context) (done bool, err error) {
 		return func(ctx context.Context) (done bool, err error) {
 			events, err := c.clientset.CoreV1().Events(wc.Namespace).List(ctx, metav1.ListOptions{
