@@ -101,9 +101,9 @@ func NewClient(ctx context.Context, configPath string) (client *Client, err erro
 	return
 }
 
-func (c *Client) Deploy(ctx context.Context, ke fs.KubernetesEnv) error {
-	if ke.IsKustomize() {
-		yamls, err := sortResources(ke.KustomizeDir)
+func (c *Client) Deploy(ctx context.Context, envDesc *fs.EnvDescription) error {
+	if envDesc.IsKustomize() {
+		yamls, err := sortResources(envDesc.KustomizeDir)
 		if err != nil {
 			return err
 		}
@@ -118,8 +118,8 @@ func (c *Client) Deploy(ctx context.Context, ke fs.KubernetesEnv) error {
 	}
 
 	// without kustomize, just apply as is
-	for ke.ManifestsLeft() {
-		content, err := ke.ReadManifest()
+	for envDesc.ManifestsLeft() {
+		content, err := envDesc.ReadManifest()
 		if err != nil {
 			return err
 		}

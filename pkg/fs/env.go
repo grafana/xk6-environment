@@ -3,9 +3,10 @@ package fs
 import (
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
-type KubernetesEnv struct {
+type EnvDescription struct {
 	Manifests []string
 	i         int
 
@@ -15,7 +16,7 @@ type KubernetesEnv struct {
 	folder string
 }
 
-func (k *KubernetesEnv) ReadManifest() (string, error) {
+func (k *EnvDescription) ReadManifest() (string, error) {
 	if k.i >= len(k.Manifests) {
 		return "", nil
 	}
@@ -26,19 +27,15 @@ func (k *KubernetesEnv) ReadManifest() (string, error) {
 	return string(data), err
 }
 
-func (k KubernetesEnv) ManifestsLeft() bool {
+func (k EnvDescription) ManifestsLeft() bool {
 	return k.i < len(k.Manifests)
 }
 
-func (k KubernetesEnv) IsKustomize() bool {
+func (k EnvDescription) IsKustomize() bool {
 	return k.kustomizationPresent
 }
 
-// TODO: add smth like:
-// type EnvOnFS interface{
-// 	Apply(Deployer)
-// }
-
-// type Deployer interface{
-// 	Deploy([]byte)
-// }
+// name of the init folder
+func (f EnvDescription) InitFolder() string {
+	return filepath.Base(f.folder)
+}

@@ -39,23 +39,18 @@ func (mod *goModuleImpl) newEnvironment(params interface{}) (goEnvironment, erro
 		return nil, err
 	}
 
-	opts := environment.JSOptions{
+	// the folder might be empty so skip it
+	// TODO: add some logging here?
+	fenv, err := fs.FindEnv(initFolder)
+	if err != nil {
+		fmt.Println("FindTest: ", err)
+	}
+
+	env := environment.NewEnvironment(fenv, nil)
+	env.JSOptions = environment.JSOptions{
 		Source: initFolder,
 	}
 
-	// the folder might be empty so skip it
-	// TODO: add some logging here?
-	test, _ := fs.FindTest(opts.Source)
-
-	if err := test.ReadOptions(); err != nil {
-		return nil, fmt.Errorf("Cannot read options ini")
-	}
-
-	env := environment.NewEnvironment(test, nil)
-
-	env.JSOptions = opts
-
-	// env.SetTestName(env.Test.FolderName())
 	env.SetTestName(name)
 
 	return goEnvironmentImpl{
@@ -82,11 +77,6 @@ func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
 	}
 
 	return nil, nil
-}
-
-// runTestMethod is the go representation of the runTest method.
-func (impl goEnvironmentImpl) runTestMethod() error {
-	return impl.RunTest(impl.vu.Context())
 }
 
 // deleteMethod is the go representation of the delete method.

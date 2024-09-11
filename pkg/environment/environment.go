@@ -59,7 +59,7 @@ type Environment struct {
 	// This is now set from init context, see newEnvironment call
 	ParentContext string
 	TestName      string
-	Test          *fs.Test
+	envDesc       *fs.EnvDescription
 
 	// set from JS
 	JSOptions
@@ -69,7 +69,7 @@ type Environment struct {
 	logger *zap.Logger
 }
 
-func NewEnvironment(test *fs.Test, logger *zap.Logger) *Environment {
+func NewEnvironment(fenv *fs.EnvDescription, logger *zap.Logger) *Environment {
 	return &Environment{
 		opts: &options{
 			"",
@@ -77,7 +77,7 @@ func NewEnvironment(test *fs.Test, logger *zap.Logger) *Environment {
 		kubernetesClient: nil,
 		ParentContext:    "",
 		TestName:         "",
-		Test:             test,
+		envDesc:          fenv,
 
 		logger: logger,
 	}
@@ -113,7 +113,7 @@ func (e *Environment) Describe() string {
 	return fmt.Sprintf(`Test name: %s, with files: %+v. 
 						jsopts: %v,
 						K8s parent context: %s\n`,
-		e.TestName, e.Test, e.JSOptions, e.ParentContext)
+		e.TestName, e.envDesc, e.JSOptions, e.ParentContext)
 }
 
 // to be called in setup()
@@ -141,7 +141,7 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 		return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	}
 
-	err = e.kubernetesClient.Deploy(ctx, e.Test.Kubernetes)
+	err = e.kubernetesClient.Deploy(ctx, e.envDesc)
 	return
 }
 
@@ -157,23 +157,6 @@ func (e *Environment) Delete(ctx context.Context) error {
 	}
 
 	return kubernetes.DeleteContext(e.opts.ConfigPath, e.TestName)
-}
-
-func (e *Environment) RunTest(ctx context.Context) error {
-	if err := e.kubernetesClient.CreateTest(ctx, e.TestName, e.Test.Def); err != nil {
-		return err
-	}
-
-	wc, err := kubernetes.NewWaitCondition(e.JSOptions.getCondition())
-	if err != nil {
-		return err
-	}
-
-	if err := e.Wait(ctx, wc); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (e *Environment) Wait(ctx context.Context, wc *kubernetes.WaitCondition) (err error) {
