@@ -62,3 +62,8 @@ func (self *goEnvironmentImpl) applySpecMethod(specArg string) (interface{}, err
 func (self *goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
 	return nil, errors.ErrUnsupported
 }
+
+// getNMethod is a goEnvironment method implementation.
+func (self *goEnvironmentImpl) getNMethod(typeArg string, optsArg interface{}) (float64, error) {
+	return 0, errors.ErrUnsupported
+}

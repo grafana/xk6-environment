@@ -15,6 +15,7 @@ import (
 
 	"go.k6.io/k6/js/modules"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Options for environment
@@ -216,4 +217,49 @@ func (e *Environment) ApplySpec(ctx context.Context, spec string) (err error) {
 
 	err = e.kubernetesClient.Apply(ctx, bytes.NewBufferString(spec))
 	return err
+}
+
+// GetN returns number of objects within environment with the given parameters.
+func (e *Environment) GetN(ctx context.Context, optsArg map[string]interface{}) (n int, err error) {
+	if err = e.getParent(ctx); err != nil {
+		return
+	}
+	defer func() {
+		e := e.parent(ctx)
+		// overwrite return value, only if it's nil;
+		// otherwise, return the error from main function
+		if err == nil {
+			err = e
+		}
+	}()
+
+	if err = e.InitKubernetes(ctx, e.TestName); err != nil {
+		return 0, fmt.Errorf("unable to initialize Kubernetes client: %w", err)
+	}
+
+	namespace, labels := namespaceAndLabels(optsArg)
+
+	n, err = e.kubernetesClient.GetN(ctx, namespace, &metav1.ListOptions{
+		LabelSelector: labels,
+	})
+	return
+}
+
+func namespaceAndLabels(opts map[string]interface{}) (ns string, l string) {
+	var ok bool
+	if ns, ok = opts["namespace"].(string); !ok {
+		ns = "default"
+	}
+
+	for k, v := range opts {
+		if k == "namespace" {
+			continue
+		}
+		if len(l) > 0 {
+			l += ","
+		}
+		l += fmt.Sprintf("%s=%s", k, v)
+	}
+
+	return
 }

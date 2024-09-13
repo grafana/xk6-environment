@@ -15,6 +15,14 @@
  */
 export as namespace environment;
 
+// /** 
+//  * The class for basic access to a Kubernetes object.
+//  */
+// export declare class KubernetesObject {
+//   name() string;
+//   namespace() string;
+// }
+
 /**
  * This is the primary class of the environment extension.
  *
@@ -45,8 +53,24 @@ export declare class Environment {
   apply(file: string);
   applySpec(spec: string); // we have to use a diff name here: method overload is not supported
 
-  // wait(condition: any);
+  /**
+   * `wait` method blocks execution of the test iteration until a certain condition 
+   * is reached or until a timeout. There are 3 major types of conditions now:
+   * 
+   * 1. Wait until a given Kubernetes event.
+   * 
+   * 2. Wait until a given `.status.conditions[]` reaches a given value.
+   * 
+   * 3. Wait until a custom field in `.status` reaches a given value.
+   */
   wait(condition: object, opts?: object);
+
+  /**
+   * getN is a substitute for get(), hopefully temporary. See tygor's roadmap.
+   * @param type 
+   * @param opts 
+   */
+  getN(type: string, opts?: object): number;
 
   // TODO:
   // list(resource: string, namespace: string);

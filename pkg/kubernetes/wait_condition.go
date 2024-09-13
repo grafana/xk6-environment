@@ -103,7 +103,12 @@ func (wc *WaitCondition) Validate() bool {
 
 // TimeParams sets time parameters.
 func (wc *WaitCondition) TimeParams(interval, timeout time.Duration) {
-	wc.interval, wc.timeout = interval, timeout
+	if interval > 0 {
+		wc.interval = interval
+	}
+	if timeout > 0 {
+		wc.timeout = timeout
+	}
 }
 
 // Build builds internal logic for WaitCondition.

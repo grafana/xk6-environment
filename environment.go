@@ -141,6 +141,35 @@ func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg inter
 	return nil, nil
 }
 
+func (impl goEnvironmentImpl) getNMethod(typeArg string, optsArg interface{}) (float64, error) {
+	if typeArg != "pods" {
+		// TODO remove this once error propagation works
+		fmt.Println("got error: only pods are currently supported")
+		return 0, nil
+	}
+	opts := map[string]interface{}{}
+	if optsArg != nil {
+		var ok bool
+		opts, ok = optsArg.(map[string]interface{})
+		if !ok {
+			err := fmt.Errorf(
+				`2nd argument in getN() must be an object of the form {"namespace":"ns","label": "selector"}, got: %+v`,
+				optsArg)
+			// TODO remove this once error propagation works
+			fmt.Println("got error", err)
+			return 0, nil
+		}
+	}
+
+	n, err := impl.e.GetN(impl.vu.Context(), opts)
+	if err != nil {
+		// TODO remove this once error propagation works
+		fmt.Println("got error", err)
+		return 0, nil
+	}
+	return float64(n), nil
+}
+
 // TODO: tygor issue for this boilerplate
 func processParams(paramsArg interface{}) (name, implementation, initFolder string, err error) {
 	e := fmt.Errorf(`Environment() expects an object; got: %+v`, paramsArg)

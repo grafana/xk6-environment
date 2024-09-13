@@ -124,7 +124,23 @@ type jsEnvironment interface {
 	applySpecMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 
 	// waitMethod is the go binding for the JavaScript wait method.
+	//
+	// TSDoc:
+	// `wait` method blocks execution of the test iteration until a certain condition
+	// is reached or until a timeout. There are 3 major types of conditions now:
+	//
+	// 1. Wait until a given Kubernetes event.
+	//
+	// 2. Wait until a given `.status.conditions[]` reaches a given value.
+	//
+	// 3. Wait until a custom field in `.status` reaches a given value.
 	waitMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
+
+	// getNMethod is the go binding for the JavaScript getN method.
+	//
+	// TSDoc:
+	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap.
+	getNMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 }
 
 // goEnvironment is the go representation of the JavaScript Environment type.
@@ -145,7 +161,23 @@ type goEnvironment interface {
 	applySpecMethod(specArg string) (interface{}, error)
 
 	// waitMethod is the go representation of the wait method.
+	//
+	// TSDoc:
+	// `wait` method blocks execution of the test iteration until a certain condition
+	// is reached or until a timeout. There are 3 major types of conditions now:
+	//
+	// 1. Wait until a given Kubernetes event.
+	//
+	// 2. Wait until a given `.status.conditions[]` reaches a given value.
+	//
+	// 3. Wait until a custom field in `.status` reaches a given value.
 	waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error)
+
+	// getNMethod is the go representation of the getN method.
+	//
+	// TSDoc:
+	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap.
+	getNMethod(typeArg string, optsArg interface{}) (float64, error)
 }
 
 // jsEnvironmentAdapter converts goEnvironment to jsEnvironment.
@@ -198,6 +230,16 @@ func (self *jsEnvironmentAdapter) applySpecMethod(call goja.FunctionCall, vm *go
 // waitMethod is a jsEnvironment adapter method.
 func (self *jsEnvironmentAdapter) waitMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
 	v, err := self.adaptee.waitMethod(call.Argument(0).Export(), call.Argument(1).Export())
+	if err != nil {
+		panic(err)
+	}
+
+	return vm.ToValue(v)
+}
+
+// getNMethod is a jsEnvironment adapter method.
+func (self *jsEnvironmentAdapter) getNMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
+	v, err := self.adaptee.getNMethod(call.Argument(0).String(), call.Argument(1).Export())
 	if err != nil {
 		panic(err)
 	}
@@ -288,6 +330,21 @@ func (self *goEnvironmentAdapter) waitMethod(conditionArg interface{}, optsArg i
 	return res.Export(), nil
 }
 
+// getNMethod is a getN adapter method.
+func (self *goEnvironmentAdapter) getNMethod(typeArg string, optsArg interface{}) (float64, error) {
+	fun, ok := goja.AssertFunction(self.adaptee.Get("getN"))
+	if !ok {
+		return 0, fmt.Errorf("%w: getN", errors.ErrUnsupported)
+	}
+
+	res, err := fun(self.adaptee)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.ToFloat(), nil
+}
+
 // jsEnvironmentTo setup Environment JavaScript object from jsEnvironment.
 func jsEnvironmentTo(src jsEnvironment, obj *goja.Object, vm *goja.Runtime) error {
 	if err := obj.Set("init", src.initMethod); err != nil {
@@ -306,7 +363,11 @@ func jsEnvironmentTo(src jsEnvironment, obj *goja.Object, vm *goja.Runtime) erro
 		return err
 	}
 
-	return obj.Set("wait", src.waitMethod)
+	if err := obj.Set("wait", src.waitMethod); err != nil {
+		return err
+	}
+
+	return obj.Set("getN", src.getNMethod)
 }
 
 // jsEnvironmentFrom returns a jsEnvironment based on a goEnvironment.

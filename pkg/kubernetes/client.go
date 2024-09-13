@@ -12,6 +12,7 @@ import (
 	"xk6-environment/pkg/fs"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -190,4 +191,10 @@ func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 		crclient.Apply,
 		crclient.ForceOwnership,
 		crclient.FieldOwner("xk6-environment"))
+}
+
+// GetN is a hopefully temporary substitute for Get
+func (c *Client) GetN(ctx context.Context, namespace string, opts *metav1.ListOptions) (int, error) {
+	podList, err := c.clientset.CoreV1().Pods(namespace).List(ctx, *opts)
+	return len(podList.Items), err
 }
