@@ -31,26 +31,47 @@ export as namespace environment;
  * import { Environment } from "k6/x/environment"
  *
  * export default function () {
- *   let instance = new Environment("Wonderful World")
+ *   let instance = new Environment({
+ *     name: "my-env",
+ *     implementation: "vcluster",
+ *     initFolder: "my-folder-with-manifests/",
+ *   })
  *   console.log(instance.greeting)
  * }
  * ```
  */
 export declare class Environment {
   /**
-   * Create a new Environment instance.
+   * Defines a new Environment instance.
    *
    * @param name name of the environment
-   * @param type implementation for the environment (only "vcluster" for now)
-   * @param initFolder folder containing base manifests to apply on initialization of environment
+   * @param implementation implementation for the environment (only "vcluster" for now)
+   * @param initFolder optional, a folder containing base manifests to apply on initialization of environment
    */
   constructor(params: object);
 
+  /**
+   * init creates an Environment as defined in constructor.
+   */
   init();
+  /**
+   * delete removes an existing Environment.
+   */
   delete();
 
-  // apply(files: string[]); arrays are not supported by Tygor :sweat_smile:
+  // consider this definition
+  // apply(files: string[]); arrays are not supported by Tygor yet
+
+  /**
+   * apply reads the contents of the file and applies them to the virtual cluster.
+   * @param file is expected to be a readable yaml file (Kubernetes manifest).
+   */
   apply(file: string);
+
+  /**
+   * applySpec applies the spec to the virtual cluster.
+   * @param spec is expected to be a yaml manifest.
+   */
   applySpec(spec: string); // we have to use a diff name here: method overload is not supported
 
   /**
@@ -62,13 +83,19 @@ export declare class Environment {
    * 2. Wait until a given `.status.conditions[]` reaches a given value.
    * 
    * 3. Wait until a custom field in `.status` reaches a given value.
+   * 
+   * @param condition describes the wait condition itself. It should have name, namespace, kind fields.
+   * It can be configured with fields: 1) reason, 2) condition_type and value, 
+   * 3) status_key and status_value. 
+   * @param opts optional configuration of timeout and interval (defaults are 1h and 2s), for how
+   * often to perfrom a check of wait condition.
    */
   wait(condition: object, opts?: object);
 
   /**
-   * getN is a substitute for get(), hopefully temporary. See tygor's roadmap.
-   * @param type 
-   * @param opts 
+   * getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
+   * @param type is a kind of resource, like "pods".
+   * @param opts optional parameteters for the resource, like namespace and labels.
    */
   getN(type: string, opts?: object): number;
 

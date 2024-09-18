@@ -112,15 +112,27 @@ type goModuleConstructor func(vu modules.VU) goModule
 // This is the primary class of the environment extension.
 type jsEnvironment interface {
 	// initMethod is the go binding for the JavaScript init method.
+	//
+	// TSDoc:
+	// init creates an Environment as defined in constructor.
 	initMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 
 	// deleteMethod is the go binding for the JavaScript delete method.
+	//
+	// TSDoc:
+	// delete removes an existing Environment.
 	deleteMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 
 	// applyMethod is the go binding for the JavaScript apply method.
+	//
+	// TSDoc:
+	// apply reads the contents of the file and applies them to the virtual cluster.
 	applyMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 
 	// applySpecMethod is the go binding for the JavaScript applySpec method.
+	//
+	// TSDoc:
+	// applySpec applies the spec to the virtual cluster.
 	applySpecMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 
 	// waitMethod is the go binding for the JavaScript wait method.
@@ -139,7 +151,7 @@ type jsEnvironment interface {
 	// getNMethod is the go binding for the JavaScript getN method.
 	//
 	// TSDoc:
-	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap.
+	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
 	getNMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 }
 
@@ -149,15 +161,27 @@ type jsEnvironment interface {
 // This is the primary class of the environment extension.
 type goEnvironment interface {
 	// initMethod is the go representation of the init method.
+	//
+	// TSDoc:
+	// init creates an Environment as defined in constructor.
 	initMethod() (interface{}, error)
 
 	// deleteMethod is the go representation of the delete method.
+	//
+	// TSDoc:
+	// delete removes an existing Environment.
 	deleteMethod() (interface{}, error)
 
 	// applyMethod is the go representation of the apply method.
+	//
+	// TSDoc:
+	// apply reads the contents of the file and applies them to the virtual cluster.
 	applyMethod(fileArg string) (interface{}, error)
 
 	// applySpecMethod is the go representation of the applySpec method.
+	//
+	// TSDoc:
+	// applySpec applies the spec to the virtual cluster.
 	applySpecMethod(specArg string) (interface{}, error)
 
 	// waitMethod is the go representation of the wait method.
@@ -176,7 +200,7 @@ type goEnvironment interface {
 	// getNMethod is the go representation of the getN method.
 	//
 	// TSDoc:
-	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap.
+	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
 	getNMethod(typeArg string, optsArg interface{}) (float64, error)
 }
 

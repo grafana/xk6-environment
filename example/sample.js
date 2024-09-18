@@ -13,7 +13,7 @@ export function setup() {
 }
 
 export default function () {
-  env.apply("pod.yaml"); // deploys nginx pod
+  env.apply("example/pod.yaml"); // deploys nginx pod
 
   env.applySpec(`apiVersion: v1
 kind: Pod

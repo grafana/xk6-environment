@@ -88,7 +88,7 @@ func NewClient(_ context.Context, configPath string) (*Client, error) {
 	}
 	client.restMapper = restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(client.discoveryClient))
 
-	// TODO this should be suppressing this warning:
+	// TODO: this should be suppressing this warning:
 	// `[controller-runtime] log.SetLogger(...) was never called; logs will not be displayed.`
 	// src: https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/client#New
 	// Possibly related: breaking changes in controller-runtime logger happened here PR 2317:
