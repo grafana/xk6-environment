@@ -31,12 +31,11 @@ export as namespace environment;
  * import { Environment } from "k6/x/environment"
  *
  * export default function () {
- *   let instance = new Environment({
+ *   let env = new Environment({
  *     name: "my-env",
  *     implementation: "vcluster",
  *     initFolder: "my-folder-with-manifests/",
  *   })
- *   console.log(instance.greeting)
  * }
  * ```
  */
@@ -85,16 +84,16 @@ export declare class Environment {
    * 3. Wait until a custom field in `.status` reaches a given value.
    * 
    * @param condition describes the wait condition itself. It should have name, namespace, kind fields.
-   * It can be configured with fields: 1) reason, 2) condition_type and value, 
-   * 3) status_key and status_value. 
+   * It can be configured with fields: 1) "reason" to wait for Kubernetes event, 2) "condition\_type" and "value", 
+   * to wait for `.status.conditions[]`, 3) "status\_key" and "status\_value" to wait for custom `.status` value. 
    * @param opts optional configuration of timeout and interval (defaults are 1h and 2s), for how
    * often to perfrom a check of wait condition.
    */
   wait(condition: object, opts?: object);
 
   /**
-   * getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
-   * @param type is a kind of resource, like "pods".
+   * getN is a substitute for get(), hopefully temporary. See [tygor's](https://github.com/szkiba/tygor) roadmap about support for arrays.
+   * @param type is a kind of resource (currently only "pods" are supported).
    * @param opts optional parameteters for the resource, like namespace and labels.
    */
   getN(type: string, opts?: object): number;

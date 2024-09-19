@@ -10,19 +10,19 @@
 
 -->
 
-**xk6-environment** provides a way to simplify definition of a k6 test with environment attached. This allows to bootstrap and executed the test within specific environment in a repeatable fashion while keeping the environment isolated.
+**xk6-environment** provides a way to simplify definition of a k6 test with environment attached. This allows to bootstrap and execute the test within specific environment in a repeatable fashion while keeping the environment isolated.
 
 > [!WARNING] 
 > xk6-environment is an experimental extension. Consider limitations below and existing GitHub issues before usage.
 
 Some use cases for xk6-environment:
-- As a first-class object, the environment itself can be viewed as SUT (system under test).
+- As a first-class object, the environment itself can be viewed as a SUT (system under test).
   - Answer questions like: does my environment reach a state X under conditions Y?
-- Repeatable execution of testing logic within a given environment, without resorting to additional Bash or Go scripts around k6 invocation.
+- Repeatable execution of testing logic within a given environment, without resorting to additional Bash scripts around k6 invocation.
 - Infrastructure tests or experiments.
 - A way to share a k6 test with environment attached. E.g. a k6 test that illustrates an issue that happens only with a certain version of Prometheus deployment.
 
-Current implementation is done via [vcluster](https://www.vcluster.com/) tool, which create a virtual, "ephemeral" cluster within existing Kubernetes cluster.
+Current implementation is done via [vcluster](https://www.vcluster.com/) tool which creates a virtual, "ephemeral" cluster within existing Kubernetes cluster.
 
 ## Prerequisites
 
@@ -92,7 +92,6 @@ The most important current limitations:
 - xk6-environment support only `VU: 1` tests. Given the nature of virtual environments, it is yet unclear if there is a use case that requires more than 1 VU.
 - Kubernetes context corresponding to vcluster is created on `create` method but not yet removed on `delete`.
 - Since xk6-environment accesses and edits your `KUBECONFIG`, if you tinker with it simultaneously with the test execution, the result might be unpredictable. For example, changing Kubernetes context during execution of xk6-environment test will likely make the test fail.
-
 <!-- begin:api -->
 xk6-environment
 ===============
@@ -141,12 +140,11 @@ This is the primary class of the environment extension.
 import { Environment } from "k6/x/environment"
 
 export default function () {
-  let instance = new Environment({
+  let env = new Environment({
     name: "my-env",
     implementation: "vcluster",
     initFolder: "my-folder-with-manifests/",
   })
-  console.log(instance.greeting)
 }
 ```
 
@@ -208,7 +206,7 @@ applySpec applies the spec to the virtual cluster.
 wait(condition: object, opts?: object);
 ```
 
--	`condition` describes the wait condition itself. It should have name, namespace, kind fields. It can be configured with fields: 1) reason, 2) condition*type and value, 3) status*key and status_value.
+-	`condition` describes the wait condition itself. It should have name, namespace, kind fields. It can be configured with fields: 1) "reason" to wait for Kubernetes event, 2) "condition\_type" and "value", to wait for `.status.conditions[]`, 3) "status\_key" and "status\_value" to wait for custom `.status` value.
 
 -	`opts` optional configuration of timeout and interval (defaults are 1h and 2s), for how often to perfrom a check of wait condition.
 
@@ -226,9 +224,9 @@ wait(condition: object, opts?: object);
 getN(type: string, opts?: object): number;
 ```
 
--	`type` is a kind of resource, like "pods".
+-	`type` is a kind of resource (currently only "pods" are supported).
 
 -	`opts` optional parameteters for the resource, like namespace and labels.
 
-getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
+getN is a substitute for get(), hopefully temporary. See [tygor's](https://github.com/szkiba/tygor) roadmap about support for arrays.
 <!-- end:api -->
