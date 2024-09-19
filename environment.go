@@ -4,9 +4,10 @@ package environment
 import (
 	"fmt"
 	"time"
-	"xk6-environment/pkg/environment"
-	"xk6-environment/pkg/fs"
-	"xk6-environment/pkg/kubernetes"
+
+	"github.com/grafana/xk6-environment/pkg/environment"
+	"github.com/grafana/xk6-environment/pkg/fs"
+	"github.com/grafana/xk6-environment/pkg/kubernetes"
 
 	"go.k6.io/k6/js/modules"
 )

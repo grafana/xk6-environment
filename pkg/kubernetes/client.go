@@ -9,7 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"xk6-environment/pkg/fs"
+
+	"github.com/grafana/xk6-environment/pkg/fs"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
