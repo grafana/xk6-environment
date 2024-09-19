@@ -151,7 +151,7 @@ type jsEnvironment interface {
 	// getNMethod is the go binding for the JavaScript getN method.
 	//
 	// TSDoc:
-	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
+	// getN is a substitute for get(), hopefully temporary. See [tygor's](https://github.com/szkiba/tygor) roadmap about support for arrays.
 	getNMethod(call goja.FunctionCall, vm *goja.Runtime) goja.Value
 }
 
@@ -200,7 +200,7 @@ type goEnvironment interface {
 	// getNMethod is the go representation of the getN method.
 	//
 	// TSDoc:
-	// getN is a substitute for get(), hopefully temporary. See tygor's roadmap about arrays support.
+	// getN is a substitute for get(), hopefully temporary. See [tygor's](https://github.com/szkiba/tygor) roadmap about support for arrays.
 	getNMethod(typeArg string, optsArg interface{}) (float64, error)
 }
 

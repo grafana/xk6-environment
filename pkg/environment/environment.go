@@ -9,9 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"xk6-environment/pkg/fs"
-	"xk6-environment/pkg/kubernetes"
-	"xk6-environment/pkg/vcluster"
+
+	"github.com/grafana/xk6-environment/pkg/fs"
+	"github.com/grafana/xk6-environment/pkg/kubernetes"
+	"github.com/grafana/xk6-environment/pkg/vcluster"
 
 	"go.k6.io/k6/js/modules"
 	"go.uber.org/zap"

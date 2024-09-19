@@ -1,4 +1,4 @@
-module xk6-environment
+module github.com/grafana/xk6-environment
 
 go 1.22.0
 
