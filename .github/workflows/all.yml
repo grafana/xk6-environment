@@ -1,4 +1,5 @@
 name: CI
+permissions: {}
 on:
   # Enable manually triggering this workflow via the API or web UI
   workflow_dispatch:
