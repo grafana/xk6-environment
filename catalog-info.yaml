@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: xk6-environment
+  title: xk6-environment
+  description: |
+    xk6-environment provides a way to simplify definition of a k6 test with environment attached. 
+  annotations:
+    github.com/project-slug: grafana/xk6-environment
+spec:
+  type: library
+  owner: group:default/k6-cloud-data
+  lifecycle: production
