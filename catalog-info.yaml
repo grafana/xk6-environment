@@ -6,7 +6,6 @@ metadata:
   description: |
     xk6-environment provides a way to simplify definition of a k6 test with environment attached. 
   annotations:
-    backstage.io/techdocs-ref: dir:.
     github.com/project-slug: grafana/xk6-environment
 spec:
   type: library
