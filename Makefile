@@ -23,10 +23,6 @@ build:
 	# xk6 build --with github.com/grafana/xk6-environment=.
 	xk6 build --with xk6-environment=.
 
-## tygor: Generates Golang interfaces and boilerplate from TypeScript definition.
-tygor:
-	go generate
-
 ## format: Applies Go formatting to code.
 format:
 	go fmt ./...
