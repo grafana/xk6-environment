@@ -52,10 +52,10 @@ const (
 )
 
 // NewWaitCondition constructs WaitCondition from provided configuration.
-func NewWaitCondition(conditionArg interface{}) (wc *WaitCondition, err error) {
-	waitOptions, ok := conditionArg.(map[string]interface{})
+func NewWaitCondition(conditionArg any) (wc *WaitCondition, err error) {
+	waitOptions, ok := conditionArg.(map[string]any)
 	if !ok {
-		err = fmt.Errorf("wait() requires an object that can be converted to map[string]interface{}, got: %+v", conditionArg)
+		err = fmt.Errorf("wait() requires an object that can be converted to map[string]any, got: %+v", conditionArg)
 		return
 	}
 	wc = &WaitCondition{}

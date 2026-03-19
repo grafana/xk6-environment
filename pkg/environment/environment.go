@@ -131,7 +131,7 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 		}
 	}()
 
-	if err = vcluster.Create(e.TestName); err != nil {
+	if err = vcluster.Create(ctx, e.TestName); err != nil {
 		return
 	}
 
@@ -145,13 +145,13 @@ func (e *Environment) Create(ctx context.Context) (err error) {
 
 // Delete deletes a vcluster.
 // Delete is meant to be called in teardown() of the script.
-func (e *Environment) Delete(_ context.Context) error {
+func (e *Environment) Delete(ctx context.Context) error {
 	// This will be needed if / when vcluster is done via Helm
 	// if err := e.InitKubernetes(ctx, ""); err != nil {
 	// 	return fmt.Errorf("unable to initialize Kubernetes client: %w", err)
 	// }
 
-	if err := vcluster.Delete(e.TestName); err != nil {
+	if err := vcluster.Delete(ctx, e.TestName); err != nil {
 		return err
 	}
 
@@ -221,7 +221,7 @@ func (e *Environment) ApplySpec(ctx context.Context, spec string) (err error) {
 }
 
 // GetN returns number of objects within environment with the given parameters.
-func (e *Environment) GetN(ctx context.Context, optsArg map[string]interface{}) (n int, err error) {
+func (e *Environment) GetN(ctx context.Context, optsArg map[string]any) (n int, err error) {
 	if err = e.getParent(ctx); err != nil {
 		return
 	}
@@ -246,7 +246,7 @@ func (e *Environment) GetN(ctx context.Context, optsArg map[string]interface{}) 
 	return
 }
 
-func namespaceAndLabels(opts map[string]interface{}) (ns string, l string) {
+func namespaceAndLabels(opts map[string]any) (ns string, l string) {
 	var ok bool
 	if ns, ok = opts["namespace"].(string); !ok {
 		ns = "default"

@@ -102,7 +102,7 @@ type goEnvironmentImpl struct {
 // initMethod is the go representation of the create method.
 //
 //nolint:nilnil,nilerr
-func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
+func (impl goEnvironmentImpl) initMethod() (any, error) {
 	if err := impl.e.Create(impl.vu.Context()); err != nil {
 		return err.Error(), nil
 	}
@@ -113,7 +113,7 @@ func (impl goEnvironmentImpl) initMethod() (interface{}, error) {
 // deleteMethod is the go representation of the delete method.
 //
 //nolint:nilnil,nilerr
-func (impl goEnvironmentImpl) deleteMethod() (interface{}, error) {
+func (impl goEnvironmentImpl) deleteMethod() (any, error) {
 	if err := impl.e.Delete(impl.vu.Context()); err != nil {
 		return err.Error(), nil
 	}
@@ -124,7 +124,7 @@ func (impl goEnvironmentImpl) deleteMethod() (interface{}, error) {
 // applyMethod is the go representation of the apply method.
 //
 //nolint:nilnil,nilerr
-func (impl goEnvironmentImpl) applyMethod(fileArg string) (interface{}, error) {
+func (impl goEnvironmentImpl) applyMethod(fileArg string) (any, error) {
 	if err := impl.e.Apply(impl.vu.Context(), fileArg); err != nil {
 		return err.Error(), nil
 	}
@@ -135,7 +135,7 @@ func (impl goEnvironmentImpl) applyMethod(fileArg string) (interface{}, error) {
 // applySpecMethod is the go representation of the applySpec method.
 //
 //nolint:nilnil,nilerr
-func (impl goEnvironmentImpl) applySpecMethod(specArg string) (interface{}, error) {
+func (impl goEnvironmentImpl) applySpecMethod(specArg string) (any, error) {
 	if err := impl.e.ApplySpec(impl.vu.Context(), specArg); err != nil {
 		return err.Error(), nil
 	}
@@ -144,7 +144,7 @@ func (impl goEnvironmentImpl) applySpecMethod(specArg string) (interface{}, erro
 }
 
 //nolint:nilnil,nilerr
-func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg interface{}) (interface{}, error) {
+func (impl goEnvironmentImpl) waitMethod(conditionArg any, optsArg any) (any, error) {
 	wc, err := kubernetes.NewWaitCondition(conditionArg)
 	if err != nil {
 		// this is a syntax error in definition of condition itself
@@ -169,16 +169,16 @@ func (impl goEnvironmentImpl) waitMethod(conditionArg interface{}, optsArg inter
 	return nil, nil
 }
 
-func (impl goEnvironmentImpl) getNMethod(typeArg string, optsArg interface{}) (float64, error) {
+func (impl goEnvironmentImpl) getNMethod(typeArg string, optsArg any) (float64, error) {
 	if typeArg != "pods" {
 		// TODO remove this once error propagation works
 		fmt.Println("got error: only pods are currently supported")
 		return 0, nil
 	}
-	opts := map[string]interface{}{}
+	opts := map[string]any{}
 	if optsArg != nil {
 		var ok bool
-		opts, ok = optsArg.(map[string]interface{})
+		opts, ok = optsArg.(map[string]any)
 		if !ok {
 			err := fmt.Errorf(
 				`2nd argument in getN() must be an object of the form {"namespace":"ns","label": "selector"}, got: %+v`,
@@ -198,9 +198,9 @@ func (impl goEnvironmentImpl) getNMethod(typeArg string, optsArg interface{}) (f
 	return float64(n), nil
 }
 
-func processParams(paramsArg interface{}) (name, implementation, initFolder string, err error) {
+func processParams(paramsArg any) (name, implementation, initFolder string, err error) {
 	e := fmt.Errorf(`Environment() expects an object; got: %+v`, paramsArg)
-	params, ok := paramsArg.(map[string]interface{})
+	params, ok := paramsArg.(map[string]any)
 	if !ok {
 		err = e
 		return
@@ -213,9 +213,9 @@ func processParams(paramsArg interface{}) (name, implementation, initFolder stri
 	return
 }
 
-func waitOptions(optsArg interface{}) (interval, timeout time.Duration, err error) {
+func waitOptions(optsArg any) (interval, timeout time.Duration, err error) {
 	e := fmt.Errorf(`2nd argument in wait() must be an object of the form {interval:"1h",timeout:"5m"}; got: %+v`, optsArg)
-	opts, ok := optsArg.(map[string]interface{})
+	opts, ok := optsArg.(map[string]any)
 	if !ok {
 		err = e
 		return
