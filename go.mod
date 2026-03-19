@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.11.1
 	go.k6.io/k6 v0.50.0
 	go.uber.org/zap v1.26.0
 	k8s.io/apimachinery v0.30.1
