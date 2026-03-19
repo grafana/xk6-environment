@@ -5,10 +5,10 @@ import (
 	metav1u "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func getConditions(ci []interface{}) []metav1.Condition {
+func getConditions(ci []any) []metav1.Condition {
 	conditions := make([]metav1.Condition, 0)
 	for _, c := range ci {
-		cm, ok := c.(map[string]interface{})
+		cm, ok := c.(map[string]any)
 		if ok {
 			var cond metav1.Condition
 			s, found, err := metav1u.NestedString(cm, "status")

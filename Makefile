@@ -35,10 +35,10 @@ linter-config:
 check-linter-version:
 	(golangci-lint version | grep "version $(shell head -n 1 .golangci.yml | tr -d '\# ')") || echo "Your installation of golangci-lint is different from the one that is specified in k6's linter config (there it's $(shell head -n 1 .golangci.yml | tr -d '\# ')). Results could be different in the CI."
 
-## lint: Runs the linters.
+# Run the linter
+.PHONY: lint
 lint: linter-config check-linter-version
-	echo "Running linters..."
-	golangci-lint run --out-format=tab ./...
+	golangci-lint run ./...
 
 ## check: Runs the linters and tests.
 check: lint test

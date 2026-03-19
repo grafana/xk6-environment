@@ -163,14 +163,14 @@ func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 	}
 
 	var unstructObj unstructured.Unstructured
-	unstructObj.Object = make(map[string]interface{})
-	var blob interface{}
+	unstructObj.Object = make(map[string]any)
+	var blob any
 	if err = json.Unmarshal(ext.Raw, &blob); err != nil {
 		return err
 	}
-	m, ok := blob.(map[string]interface{})
+	m, ok := blob.(map[string]any)
 	if !ok {
-		return fmt.Errorf("failed to extract map[string]interface{} from the object during apply")
+		return fmt.Errorf("failed to extract map[string]any from the object during apply")
 	}
 	unstructObj.Object = m
 
