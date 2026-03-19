@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafana/sobek"
 	"github.com/grafana/xk6-environment/pkg/environment"
 	"github.com/grafana/xk6-environment/pkg/fs"
 	"github.com/grafana/xk6-environment/pkg/kubernetes"
@@ -12,33 +13,49 @@ import (
 	"go.k6.io/k6/js/modules"
 )
 
-//go:generate go run github.com/szkiba/tygor@latest --package environment --skeleton index.d.ts
-//go:generate go run github.com/szkiba/tygor@latest doc --inject README.md index.d.ts
-
 func init() {
-	register(newModule)
+	modules.Register("k6/x/environment", new(rootModule))
 }
 
-func newModule(vu modules.VU) goModule {
-	return &goModuleImpl{
-		vu:            vu,
-		goEnvironment: &goEnvironmentImpl{},
+type rootModule struct{}
+
+func (*rootModule) NewModuleInstance(vu modules.VU) modules.Instance {
+	return &moduleInstance{vu: vu}
+}
+
+var _ modules.Module = (*rootModule)(nil)
+
+type moduleInstance struct {
+	vu modules.VU
+}
+
+func (m *moduleInstance) Exports() modules.Exports {
+	rt := m.vu.Runtime()
+	defaultObj := rt.NewObject()
+	bindEnvMethods(rt, defaultObj, &goEnvironmentImpl{vu: m.vu})
+
+	return modules.Exports{
+		Named: map[string]any{
+			"Environment": m.newEnvironmentConstructor,
+		},
+		Default: defaultObj,
 	}
 }
 
-type goModuleImpl struct {
-	vu            modules.VU
-	goEnvironment goEnvironment
-}
+var _ modules.Instance = (*moduleInstance)(nil)
 
-var _ goModule = (*goModuleImpl)(nil)
+func (m *moduleInstance) newEnvironmentConstructor(call sobek.ConstructorCall) *sobek.Object {
+	val := call.Argument(0)
+	if sobek.IsNaN(val) || sobek.IsUndefined(val) {
+		panic("can't get a constructor argument")
+	}
 
-func (mod *goModuleImpl) newEnvironment(params interface{}) (goEnvironment, error) {
 	// the only implementation supported now is vcluster so
 	// omitting the parameter here for simplicity
-	name, _, initFolder, err := processParams(params)
+
+	name, _, initFolder, err := processParams(val.Export())
 	if err != nil {
-		return nil, err
+		panic(m.vu.Runtime().NewTypeError(err.Error()))
 	}
 
 	// the folder might be empty so skip it
@@ -55,22 +72,32 @@ func (mod *goModuleImpl) newEnvironment(params interface{}) (goEnvironment, erro
 
 	env.SetTestName(name)
 
-	return goEnvironmentImpl{
-		e:  env,
-		vu: mod.vu,
-	}, nil
+	impl := &goEnvironmentImpl{e: env, vu: m.vu}
+	bindEnvMethods(m.vu.Runtime(), call.This, impl)
+
+	return nil
 }
 
-func (mod *goModuleImpl) defaultEnvironmentGetter() (goEnvironment, error) {
-	return mod.goEnvironment, nil
+func bindEnvMethods(rt *sobek.Runtime, obj *sobek.Object, impl *goEnvironmentImpl) {
+	must := func(err error) {
+		if err != nil {
+			panic(err)
+		}
+	}
+	toValue := rt.ToValue
+
+	must(obj.Set("init", toValue(impl.initMethod)))
+	must(obj.Set("delete", toValue(impl.deleteMethod)))
+	must(obj.Set("apply", toValue(impl.applyMethod)))
+	must(obj.Set("applySpec", toValue(impl.applySpecMethod)))
+	must(obj.Set("wait", toValue(impl.waitMethod)))
+	must(obj.Set("getN", toValue(impl.getNMethod)))
 }
 
 type goEnvironmentImpl struct {
 	e  *environment.Environment
 	vu modules.VU
 }
-
-var _ goEnvironment = (*goEnvironmentImpl)(nil)
 
 // initMethod is the go representation of the create method.
 //
@@ -171,7 +198,6 @@ func (impl goEnvironmentImpl) getNMethod(typeArg string, optsArg interface{}) (f
 	return float64(n), nil
 }
 
-// TODO: tygor issue for this boilerplate
 func processParams(paramsArg interface{}) (name, implementation, initFolder string, err error) {
 	e := fmt.Errorf(`Environment() expects an object; got: %+v`, paramsArg)
 	params, ok := paramsArg.(map[string]interface{})
