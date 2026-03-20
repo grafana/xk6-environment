@@ -6,7 +6,7 @@ require (
 	github.com/grafana/sobek v0.0.0-20260121195222-d8d9202018c5
 	github.com/stretchr/testify v1.11.1
 	go.k6.io/k6 v1.6.1
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.1
 	k8s.io/apimachinery v0.30.1
 	k8s.io/client-go v0.30.1
 	sigs.k8s.io/controller-runtime v0.18.4
