@@ -10,8 +10,8 @@ require (
 	k8s.io/apimachinery v0.35.3
 	k8s.io/client-go v0.35.2
 	sigs.k8s.io/controller-runtime v0.23.3
-	sigs.k8s.io/kustomize/api v0.17.1
-	sigs.k8s.io/kustomize/kyaml v0.17.0
+	sigs.k8s.io/kustomize/api v0.21.1
+	sigs.k8s.io/kustomize/kyaml v0.21.1
 )
 
 require (
@@ -34,7 +34,6 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -64,7 +63,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
-	go.starlark.net v0.0.0-20230807144010-2aa75752d1da // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
