@@ -186,10 +186,9 @@ func (c *Client) Apply(ctx context.Context, data *bytes.Buffer) error {
 
 	// server side apply
 	// https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/client#example-Client-Apply
-	return c.crClient.Patch(
+	return c.crClient.Apply(
 		ctx,
-		&unstructObj,
-		crclient.Apply,
+		crclient.ApplyConfigurationFromUnstructured(&unstructObj),
 		crclient.ForceOwnership,
 		crclient.FieldOwner("xk6-environment"))
 }
