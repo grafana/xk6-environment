@@ -104,7 +104,8 @@ jobs:
           CGO_ENABLED: "0"
           K6_VERSION: ${{ steps.meta.outputs.k6_version }}
         run: |
-          xk6 build "${K6_VERSION}" \
+          xk6 build \
+            --k6-version "${K6_VERSION}" \
             --with github.com/grafana/xk6-environment=. \
             --output k6
 
