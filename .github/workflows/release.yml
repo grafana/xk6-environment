@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to create and release (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  tag:
+    name: Create tag
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: true # needed to push the tag
+
+      - name: Validate version format
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::Version must match v<major>.<minor>.<patch> (e.g. v0.1.0)"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
+
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: [tag]
+    if: always() && (needs.tag.result == 'success' || needs.tag.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: windows
+            goarch: amd64
+            archive_ext: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.version || github.ref }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install xk6
+        run: go install go.k6.io/xk6/cmd/xk6@latest
+
+      - name: Determine versions
+        id: meta
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${INPUT_VERSION:-${REF_NAME}}"
+          K6_VERSION=$(grep 'go.k6.io/k6 ' go.mod | awk '{print $2}')
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "k6_version=${K6_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building k6 ${K6_VERSION} with xk6-environment ${TAG}"
+
+      - name: Build k6 with xk6-environment
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          K6_VERSION: ${{ steps.meta.outputs.k6_version }}
+        run: |
+          xk6 build "${K6_VERSION}" \
+            --with github.com/grafana/xk6-environment=. \
+            --output k6
+
+      - name: Create archive (tar.gz)
+        if: matrix.archive_ext == 'tar.gz'
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          ARCHIVE="k6-${TAG}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
+          tar -czf "${ARCHIVE}" k6
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Create archive (zip)
+        if: matrix.archive_ext == 'zip'
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          ARCHIVE="k6-${TAG}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+          if [ -f k6.exe ]; then
+            zip "${ARCHIVE}" k6.exe
+          else
+            mv k6 k6.exe
+            zip "${ARCHIVE}" k6.exe
+          fi
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Generate checksum
+        run: sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: k6-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            ${{ env.ARCHIVE }}
+            ${{ env.ARCHIVE }}.sha256
+
+  release:
+    name: Create release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate combined checksums
+        working-directory: artifacts
+        run: cat *.sha256 | sort > checksums.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        with:
+          tag_name: ${{ inputs.version || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/k6-*.tar.gz
+            artifacts/k6-*.zip
+            artifacts/checksums.txt
+          fail_on_unmatched_files: true
