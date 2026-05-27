@@ -17,7 +17,7 @@ jobs:
   tag:
     name: Create tag
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -46,7 +46,7 @@ jobs:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     needs: [tag]
     if: always() && (needs.tag.result == 'success' || needs.tag.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     strategy:
@@ -83,7 +83,7 @@ jobs:
           cache: false
 
       - name: Install xk6
-        run: go install go.k6.io/xk6/cmd/xk6@latest
+        run: go install go.k6.io/xk6/cmd/xk6@103897f741839bf710a496ed68ddcafb3b751581 # v1.4.3
 
       - name: Determine versions
         id: meta
@@ -146,7 +146,7 @@ jobs:
   release:
     name: Create release
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
