@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/xk6-environment/pkg/kubernetes"
 	"github.com/grafana/xk6-environment/pkg/vcluster"
 
-	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/v2/js/modules"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
