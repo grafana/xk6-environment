@@ -22,7 +22,7 @@ require (
 	github.com/dlclark/regexp2/v2 v2.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
-	github.com/evanw/esbuild v0.28.0 // indirect
+	github.com/evanw/esbuild v0.28.1 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
