@@ -3,7 +3,7 @@ module github.com/grafana/xk6-environment
 go 1.25.0
 
 require (
-	github.com/grafana/sobek v0.0.0-20260609103628-24345224533c
+	github.com/grafana/sobek v0.0.0-20260727154728-7781506a890f
 	github.com/stretchr/testify v1.11.1
 	go.k6.io/k6/v2 v2.0.0
 	go.uber.org/zap v1.28.0
@@ -19,7 +19,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dlclark/regexp2/v2 v2.1.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/evanw/esbuild v0.28.1 // indirect
