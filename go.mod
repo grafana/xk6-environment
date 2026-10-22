@@ -1,6 +1,6 @@
 module github.com/grafana/xk6-environment
 
-go 1.26.0
+go 1.27
 
 require (
 	github.com/grafana/sobek v0.0.0-20260908083152-4698bc773ae7
